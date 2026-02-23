@@ -50,6 +50,22 @@ export default function DesignPreview({
   const [designAR, setDesignAR]     = useState(1);
   const [imgLoaded, setImgLoaded]   = useState(false);
 
+  // Logo placeholder: own drag/resize/rotate state
+  const logoPlacementRef = useRef(null);
+  const [logoPlacement, setLogoPlacement] = useState(null);
+  const updateLogo = useCallback((next) => {
+    logoPlacementRef.current = next;
+    setLogoPlacement({ ...next });
+  }, []);
+
+  // Reset logo placement when side changes
+  useEffect(() => {
+    const newPa = PRINT_AREAS[side] || PRINT_AREAS.front;
+    const init = { x: newPa.xPct, y: newPa.yPct, wPct: newPa.wPct * 0.55, rotation: 0 };
+    logoPlacementRef.current = init;
+    setLogoPlacement(init);
+  }, [side]);
+
   // Measure container width for % → px conversions
   useEffect(() => {
     if (!containerRef.current) return;
@@ -134,6 +150,66 @@ export default function DesignPreview({
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup',   onUp);
   }, [onPlacementChange]);
+
+  // ── Logo placeholder drag ────────────────────────────────────
+  const startLogoDrag = useCallback((e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    e.preventDefault(); e.stopPropagation();
+    const rect = containerRef.current.getBoundingClientRect();
+    const startX = e.clientX, startY = e.clientY;
+    const { x: px, y: py } = logoPlacementRef.current;
+    function onMove(me) {
+      updateLogo({
+        ...logoPlacementRef.current,
+        x: clamp(px + (me.clientX - startX) / rect.width,  0, 1),
+        y: clamp(py + (me.clientY - startY) / rect.height, 0, 1),
+      });
+    }
+    function onUp() {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup',   onUp);
+    }
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup',   onUp);
+  }, [updateLogo]);
+
+  // ── Logo placeholder resize ──────────────────────────────────
+  const startLogoResize = useCallback((e) => {
+    e.preventDefault(); e.stopPropagation();
+    const rect = containerRef.current.getBoundingClientRect();
+    const cx = rect.left + logoPlacementRef.current.x * rect.width;
+    const cy = rect.top  + logoPlacementRef.current.y * rect.height;
+    const startDist = Math.hypot(e.clientX - cx, e.clientY - cy) || 1;
+    const startW = logoPlacementRef.current.wPct;
+    function onMove(me) {
+      const d = Math.hypot(me.clientX - cx, me.clientY - cy);
+      updateLogo({ ...logoPlacementRef.current, wPct: clamp(startW * (d / startDist), 0.05, 0.90) });
+    }
+    function onUp() {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup',   onUp);
+    }
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup',   onUp);
+  }, [updateLogo]);
+
+  // ── Logo placeholder rotate ──────────────────────────────────
+  const startLogoRotate = useCallback((e) => {
+    e.preventDefault(); e.stopPropagation();
+    const rect = containerRef.current.getBoundingClientRect();
+    const cx = rect.left + logoPlacementRef.current.x * rect.width;
+    const cy = rect.top  + logoPlacementRef.current.y * rect.height;
+    function onMove(me) {
+      const angle = Math.atan2(me.clientY - cy, me.clientX - cx) * (180 / Math.PI) + 90;
+      updateLogo({ ...logoPlacementRef.current, rotation: angle });
+    }
+    function onUp() {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup',   onUp);
+    }
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup',   onUp);
+  }, [updateLogo]);
 
   // ── Action buttons ───────────────────────────────────────────
   const handleCenter = useCallback(() => {

@@ -20,6 +20,16 @@ function Navbar() {
             Contact
           </a>
           <Link
+            to="/cart"
+            className="p-2 text-slate-500 hover:text-indigo-600 transition-colors"
+            title="Cart"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+            </svg>
+          </Link>
+          <Link
             to="/products/gildan-budget-unisex-tshirt"
             className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors text-sm font-semibold"
           >

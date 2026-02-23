@@ -67,7 +67,7 @@ export async function uploadDesign({ file, userId, anonymousId, onProgress }) {
     anonymousId,
   });
 
-  // 2. Upload directly to Supabase Storage
+  // 2. Upload directly
   await uploadFileToStorage(signedUrl, file, onProgress);
 
   // 3. Confirm + get preview URL
@@ -95,41 +95,4 @@ export async function addToCart({ variantId, quantity = 1, config, userId, anony
     throw new Error(err.error || 'Could not add to cart');
   }
   return res.json(); // { cartItem, cartId, anonymousId }
-}
-
-// ── Fetch cart ───────────────────────────────────────────────
-export async function fetchCart(anonymousId) {
-  const url = `${API_BASE}/cart${anonymousId ? `?anonymousId=${encodeURIComponent(anonymousId)}` : ''}`;
-  const res = await fetch(url);
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || 'Could not fetch cart');
-  }
-  return res.json(); // { cartId, items }
-}
-
-// ── Update cart item quantity ────────────────────────────────
-export async function updateCartItem(itemId, quantity) {
-  const res = await fetch(`${API_BASE}/cart/items/${itemId}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ quantity }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || 'Could not update item');
-  }
-  return res.json(); // { success, item }
-}
-
-// ── Remove cart item ─────────────────────────────────────────
-export async function removeCartItem(itemId) {
-  const res = await fetch(`${API_BASE}/cart/items/${itemId}`, {
-    method: 'DELETE',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || 'Could not remove item');
-  }
-  return res.json(); // { success }
 }

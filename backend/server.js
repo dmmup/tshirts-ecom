@@ -20,12 +20,18 @@ app.use(express.json());
 
 // ── Routes ────────────────────────────────────────────────────
 const productsRouter = require('./routes/products');
+const cartRouter = require('./routes/cart');
 
 // Products: GET /api/products/:slug
 // Upload:   POST /api/products/upload/sign
 //           POST /api/products/upload/confirm
-// Cart:     POST /api/products/cart/items
+// Cart add: POST /api/products/cart/items
 app.use('/api/products', productsRouter);
+
+// Cart:     GET    /api/cart?anonymousId=
+//           PATCH  /api/cart/items/:itemId
+//           DELETE /api/cart/items/:itemId
+app.use('/api/cart', cartRouter);
 
 // Health check
 app.get('/api/health', (_req, res) => res.json({ ok: true }));

@@ -1,0 +1,252 @@
+// routes/products.js
+// -------------------------------------------------------------
+// Product Detail Page – Backend Routes
+// Requires: express, @supabase/supabase-js, multer (optional)
+// Env vars: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+// -------------------------------------------------------------
+
+const express = require('express');
+const { createClient } = require('@supabase/supabase-js');
+const router = express.Router();
+
+// Admin client (service role) – NEVER expose to frontend
+const supabaseAdmin = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+// ─────────────────────────────────────────────────────────────
+// GET /api/products/:slug
+// Returns product + all variants + all images
+// ─────────────────────────────────────────────────────────────
+router.get('/:slug', async (req, res) => {
+  const { slug } = req.params;
+
+  try {
+    const { data: product, error: pErr } = await supabaseAdmin
+      .from('products')
+      .select('*')
+      .eq('slug', slug)
+      .single();
+
+    if (pErr || !product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    const [{ data: variants }, { data: images }] = await Promise.all([
+      supabaseAdmin
+        .from('product_variants')
+        .select('*')
+        .eq('product_id', product.id)
+        .order('color_name')
+        .order('size'),
+      supabaseAdmin
+        .from('product_images')
+        .select('*')
+        .eq('product_id', product.id)
+        .order('sort_order'),
+    ]);
+
+    return res.json({ product, variants: variants || [], images: images || [] });
+  } catch (err) {
+    console.error('[GET /products/:slug]', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// POST /api/products/upload/sign
+// Body: { filename, contentType, userId?, anonymousId? }
+// Returns: { signedUrl, storagePath, token }
+// Client uses signedUrl to PUT file directly to Supabase Storage
+// ─────────────────────────────────────────────────────────────
+router.post('/upload/sign', async (req, res) => {
+  const { filename, contentType, userId, anonymousId } = req.body;
+
+  if (!filename || !contentType) {
+    return res.status(400).json({ error: 'filename and contentType are required' });
+  }
+
+  // Allowed types
+  const ALLOWED_TYPES = ['image/png', 'image/svg+xml', 'image/jpeg', 'image/webp'];
+  if (!ALLOWED_TYPES.includes(contentType)) {
+    return res.status(400).json({ error: 'File type not allowed. Use PNG, SVG, JPEG or WebP.' });
+  }
+
+  const ownerId = userId || anonymousId || 'anonymous';
+  const sanitizedFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const storagePath = `designs/${ownerId}/${Date.now()}_${sanitizedFilename}`;
+
+  try {
+    const { data, error } = await supabaseAdmin.storage
+      .from('designs')
+      .createSignedUploadUrl(storagePath);
+
+    if (error) {
+      console.error('[upload/sign] Supabase error:', error);
+      return res.status(500).json({ error: 'Could not create signed URL' });
+    }
+
+    return res.json({
+      signedUrl: data.signedUrl,
+      token: data.token,
+      storagePath,
+    });
+  } catch (err) {
+    console.error('[upload/sign]', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// POST /api/products/upload/confirm
+// Body: { storagePath, filename, fileSize, mimeType, userId?, anonymousId? }
+// Verifies file exists and creates audit record
+// ─────────────────────────────────────────────────────────────
+router.post('/upload/confirm', async (req, res) => {
+  const { storagePath, filename, fileSize, mimeType, userId, anonymousId } = req.body;
+
+  if (!storagePath || !filename) {
+    return res.status(400).json({ error: 'storagePath and filename are required' });
+  }
+
+  try {
+    // Verify file actually exists in storage
+    const pathParts = storagePath.split('/');
+    const bucketPath = pathParts.slice(1).join('/');
+    const { data: fileData, error: listErr } = await supabaseAdmin.storage
+      .from('designs')
+      .list(pathParts.slice(1, -1).join('/'), {
+        search: pathParts[pathParts.length - 1],
+      });
+
+    if (listErr || !fileData || fileData.length === 0) {
+      return res.status(400).json({ error: 'File not found in storage' });
+    }
+
+    // Create audit record
+    const { data: uploadRecord, error: dbErr } = await supabaseAdmin
+      .from('design_uploads')
+      .insert({
+        user_id: userId || null,
+        anonymous_id: anonymousId || null,
+        storage_path: storagePath,
+        filename,
+        file_size: fileSize || null,
+        mime_type: mimeType || null,
+      })
+      .select()
+      .single();
+
+    if (dbErr) {
+      console.error('[upload/confirm] DB error:', dbErr);
+      // Non-fatal – return path anyway
+    }
+
+    // Build a signed read URL (1 hour) for immediate preview
+    const { data: readUrl } = await supabaseAdmin.storage
+      .from('designs')
+      .createSignedUrl(storagePath, 3600);
+
+    return res.json({
+      success: true,
+      storagePath,
+      previewUrl: readUrl?.signedUrl || null,
+      uploadId: uploadRecord?.id || null,
+    });
+  } catch (err) {
+    console.error('[upload/confirm]', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// POST /api/cart/items
+// Body: { variantId, quantity, config, userId?, anonymousId? }
+// config: { backside, decoration, design_url, notes }
+// ─────────────────────────────────────────────────────────────
+router.post('/cart/items', async (req, res) => {
+  const { variantId, quantity = 1, config = {}, userId, anonymousId } = req.body;
+
+  if (!variantId) {
+    return res.status(400).json({ error: 'variantId is required' });
+  }
+
+  try {
+    // Get or create cart
+    let cartId;
+
+    if (userId) {
+      const { data: existing } = await supabaseAdmin
+        .from('carts')
+        .select('id')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existing) {
+        cartId = existing.id;
+      } else {
+        const { data: newCart } = await supabaseAdmin
+          .from('carts')
+          .insert({ user_id: userId })
+          .select('id')
+          .single();
+        cartId = newCart.id;
+      }
+    } else if (anonymousId) {
+      const { data: existing } = await supabaseAdmin
+        .from('carts')
+        .select('id')
+        .eq('anonymous_id', anonymousId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existing) {
+        cartId = existing.id;
+      } else {
+        const { data: newCart } = await supabaseAdmin
+          .from('carts')
+          .insert({ anonymous_id: anonymousId })
+          .select('id')
+          .single();
+        cartId = newCart.id;
+      }
+    } else {
+      // Create ephemeral anonymous cart
+      const { data: newCart } = await supabaseAdmin
+        .from('carts')
+        .insert({ anonymous_id: `anon_${Date.now()}` })
+        .select('id, anonymous_id')
+        .single();
+      cartId = newCart.id;
+      // Return anonymous_id so client can persist it
+      res.locals.newAnonymousId = newCart.anonymous_id;
+    }
+
+    // Add cart item
+    const { data: cartItem, error: ciErr } = await supabaseAdmin
+      .from('cart_items')
+      .insert({ cart_id: cartId, variant_id: variantId, quantity, config })
+      .select()
+      .single();
+
+    if (ciErr) {
+      console.error('[cart/items] DB error:', ciErr);
+      return res.status(500).json({ error: 'Could not add item to cart' });
+    }
+
+    return res.status(201).json({
+      cartItem,
+      cartId,
+      anonymousId: res.locals.newAnonymousId || anonymousId || null,
+    });
+  } catch (err) {
+    console.error('[cart/items]', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+module.exports = router;

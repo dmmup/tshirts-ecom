@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { fetchProduct, uploadDesign, addToCart } from '../api/products';
+import { fetchProduct, uploadDesign, addToCart, fetchCart, removeCartItem, updateCartItem } from '../api/products';
 import DesignPreview, { makeDefaultPlacement } from '../components/DesignPreview';
 
 // ── Helpers ──────────────────────────────────────────────────
@@ -310,6 +310,213 @@ function Toast({ message, type = 'success', onDismiss }) {
   );
 }
 
+// ── Mini Cart Drawer ──────────────────────────────────────────
+const DECORATION_LABELS = { dtg: 'DTG', embroidery: 'Embroidery', screen: 'Screen' };
+
+function MiniCartItem({ item, onRemove, onQtyChange }) {
+  const { variant, product, thumbnailUrl, config, quantity } = item;
+  const [imgErr, setImgErr] = useState(false);
+  const lineTotal = (variant?.price_cents ?? 0) * quantity;
+
+  return (
+    <div className="flex gap-3 py-3 border-b border-slate-100 last:border-0">
+      {/* Thumbnail */}
+      <div className="w-14 h-16 flex-shrink-0 rounded-lg bg-slate-100 overflow-hidden flex items-center justify-center">
+        {thumbnailUrl && !imgErr ? (
+          <img src={thumbnailUrl} alt="" className="w-full h-full object-cover" onError={() => setImgErr(true)} />
+        ) : (
+          <svg className="w-6 h-6 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+          </svg>
+        )}
+      </div>
+
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-slate-800 truncate">{product?.name || 'Custom T-Shirt'}</p>
+        <div className="flex flex-wrap gap-1 mt-0.5">
+          {config?.color && (
+            <span className="text-xs text-slate-500">{config.color}</span>
+          )}
+          {config?.size && (
+            <span className="text-xs text-slate-500">· {config.size}</span>
+          )}
+          {config?.decoration && (
+            <span className="text-xs text-indigo-500">· {DECORATION_LABELS[config.decoration] || config.decoration}</span>
+          )}
+        </div>
+
+        {/* Qty + price */}
+        <div className="flex items-center justify-between mt-1.5">
+          <div className="flex items-center gap-1 border border-slate-200 rounded-lg overflow-hidden">
+            <button
+              onClick={() => quantity > 1 && onQtyChange(item.id, quantity - 1)}
+              disabled={quantity <= 1}
+              className="px-2 py-0.5 text-slate-500 hover:bg-slate-50 disabled:opacity-30 text-sm"
+            >−</button>
+            <span className="px-2 text-xs font-semibold text-slate-700 border-x border-slate-200">{quantity}</span>
+            <button
+              onClick={() => onQtyChange(item.id, quantity + 1)}
+              className="px-2 py-0.5 text-slate-500 hover:bg-slate-50 text-sm"
+            >+</button>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-bold text-slate-900">{formatPrice(lineTotal)}</span>
+            <button
+              onClick={() => onRemove(item.id)}
+              className="p-1 text-slate-300 hover:text-red-400 transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MiniCart({ open, onClose, items, loading, onRemove, onQtyChange }) {
+  const subtotal = items.reduce((acc, it) => acc + (it.variant?.price_cents ?? 0) * it.quantity, 0);
+  const itemCount = items.reduce((acc, it) => acc + it.quantity, 0);
+
+  // Close on Escape
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [open, onClose]);
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className={`fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px] transition-opacity duration-300 ${open ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        onClick={onClose}
+      />
+
+      {/* Drawer */}
+      <div className={`fixed top-0 right-0 z-50 h-full w-full max-w-sm bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out ${open ? 'translate-x-0' : 'translate-x-full'}`}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+          <h2 className="font-bold text-slate-900 text-base">
+            Your cart
+            {itemCount > 0 && <span className="ml-1.5 text-sm font-normal text-slate-400">({itemCount})</span>}
+          </h2>
+          <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-5 py-2">
+          {loading ? (
+            <div className="flex flex-col gap-3 py-4">
+              {[1, 2].map(i => (
+                <div key={i} className="flex gap-3 py-3 border-b border-slate-100 animate-pulse">
+                  <div className="w-14 h-16 rounded-lg bg-slate-100 flex-shrink-0" />
+                  <div className="flex-1 flex flex-col gap-2 py-1">
+                    <div className="h-3 bg-slate-100 rounded w-3/4" />
+                    <div className="h-2.5 bg-slate-100 rounded w-1/2" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : items.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-48 text-center gap-3">
+              <svg className="w-12 h-12 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+              </svg>
+              <p className="text-sm text-slate-500">Your cart is empty</p>
+            </div>
+          ) : (
+            items.map(item => (
+              <MiniCartItem key={item.id} item={item} onRemove={onRemove} onQtyChange={onQtyChange} />
+            ))
+          )}
+        </div>
+
+        {/* Footer */}
+        {items.length > 0 && (
+          <div className="border-t border-slate-100 px-5 py-4 flex flex-col gap-3">
+            <div className="flex justify-between text-sm font-semibold text-slate-800">
+              <span>Subtotal</span>
+              <span>{formatPrice(subtotal)}</span>
+            </div>
+            <Link
+              to="/cart"
+              onClick={onClose}
+              className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm text-center transition-colors active:scale-[0.98]"
+            >
+              Go to cart →
+            </Link>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+// ── Inline Cart Preview (right column) ───────────────────────
+function CartPreviewPanel({ items, loading, onRemove, onQtyChange }) {
+  const subtotal = items.reduce((acc, it) => acc + (it.variant?.price_cents ?? 0) * it.quantity, 0);
+  const itemCount = items.reduce((acc, it) => acc + it.quantity, 0);
+
+  if (loading) {
+    return (
+      <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 space-y-3 animate-pulse">
+        <div className="h-3 bg-slate-200 rounded w-1/3" />
+        {[1, 2].map(i => (
+          <div key={i} className="flex gap-3">
+            <div className="w-12 h-14 rounded-lg bg-slate-200 flex-shrink-0" />
+            <div className="flex-1 space-y-2 py-1">
+              <div className="h-2.5 bg-slate-200 rounded w-3/4" />
+              <div className="h-2 bg-slate-200 rounded w-1/2" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (items.length === 0) return null;
+
+  return (
+    <div className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4 space-y-3">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-bold text-slate-800">
+          Your cart
+          <span className="ml-1.5 text-indigo-600">({itemCount} {itemCount === 1 ? 'item' : 'items'})</span>
+        </p>
+        <span className="text-sm font-semibold text-slate-700">{formatPrice(subtotal)}</span>
+      </div>
+
+      {/* Item list */}
+      <div className="bg-white rounded-xl border border-slate-100 divide-y divide-slate-50 overflow-hidden">
+        {items.map(item => (
+          <MiniCartItem key={item.id} item={item} onRemove={onRemove} onQtyChange={onQtyChange} />
+        ))}
+      </div>
+
+      {/* Go to cart */}
+      <Link
+        to="/cart"
+        className="flex items-center justify-center gap-2 w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-sm transition-colors active:scale-[0.98]"
+      >
+        Go to cart
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+        </svg>
+      </Link>
+    </div>
+  );
+}
+
 // ── Main PDP ─────────────────────────────────────────────────
 export default function ProductDetailPage() {
   const { slug } = useParams();
@@ -337,6 +544,45 @@ export default function ProductDetailPage() {
   const [addingToCart, setAddingToCart]     = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [toast, setToast]                   = useState(null);
+
+  // Mini cart
+  const [miniCartOpen, setMiniCartOpen]       = useState(false);
+  const [miniCartItems, setMiniCartItems]     = useState([]);
+  const [miniCartLoading, setMiniCartLoading] = useState(false);
+
+  // Load mini-cart data (used by both drawer + inline panel)
+  const loadCart = useCallback(async () => {
+    setMiniCartLoading(true);
+    try {
+      const { items } = await fetchCart(getAnonymousId());
+      setMiniCartItems(items || []);
+    } catch {
+      setMiniCartItems([]);
+    } finally {
+      setMiniCartLoading(false);
+    }
+  }, []);
+
+  const openMiniCart = useCallback(async () => {
+    setMiniCartOpen(true);
+    await loadCart();
+  }, [loadCart]);
+
+  // Load cart on mount so the inline preview is populated immediately
+  useEffect(() => {
+    if (getAnonymousId()) loadCart();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleMiniCartRemove = useCallback(async (itemId) => {
+    setMiniCartItems(prev => prev.filter(it => it.id !== itemId));
+    await removeCartItem(itemId).catch(() => {});
+  }, []);
+
+  const handleMiniCartQtyChange = useCallback(async (itemId, qty) => {
+    setMiniCartItems(prev => prev.map(it => it.id === itemId ? { ...it, quantity: qty } : it));
+    await updateCartItem(itemId, qty).catch(() => {});
+  }, []);
 
   // Load product
   useEffect(() => {
@@ -448,7 +694,7 @@ export default function ProductDetailPage() {
       };
 
       await addToCart({ variantId: selectedVariant.id, quantity: 1, config, anonymousId: getAnonymousId() });
-      setToast({ message: 'Added to cart!', type: 'success' });
+      await loadCart();
     } catch (err) {
       setToast({ message: err.message || 'Failed to add to cart', type: 'error' });
     } finally {
@@ -498,6 +744,25 @@ export default function ProductDetailPage() {
 
   return (
     <div className="min-h-screen bg-white">
+      {/* ── Top nav ──────────────────────────────────────────── */}
+      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-sm border-b border-slate-100">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+          <Link to="/" className="text-xl font-bold text-slate-900 tracking-tight">
+            Print<span className="text-indigo-600">Shop</span>
+          </Link>
+          <button
+            onClick={openMiniCart}
+            className="p-2 text-slate-500 hover:text-indigo-600 transition-colors"
+            title="Cart"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
 
         <Breadcrumb productName={product.name} />
@@ -581,11 +846,28 @@ export default function ProductDetailPage() {
               </p>
             )}
 
+            {/* ── Inline cart preview ─────────────────────── */}
+            <CartPreviewPanel
+              items={miniCartItems}
+              loading={miniCartLoading}
+              onRemove={handleMiniCartRemove}
+              onQtyChange={handleMiniCartQtyChange}
+            />
+
           </div>
         </div>
       </div>
 
       {toast && <Toast message={toast.message} type={toast.type} onDismiss={() => setToast(null)} />}
+
+      <MiniCart
+        open={miniCartOpen}
+        onClose={() => setMiniCartOpen(false)}
+        items={miniCartItems}
+        loading={miniCartLoading}
+        onRemove={handleMiniCartRemove}
+        onQtyChange={handleMiniCartQtyChange}
+      />
 
       <style>{`
         @keyframes slide-up {
