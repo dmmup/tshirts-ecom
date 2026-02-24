@@ -16,6 +16,56 @@ const supabaseAdmin = createClient(
 );
 
 // ─────────────────────────────────────────────────────────────
+// GET /api/products
+// Returns all products with thumbnail, min price, color count
+// ─────────────────────────────────────────────────────────────
+router.get('/', async (req, res) => {
+  try {
+    const { data: products, error: pErr } = await supabaseAdmin
+      .from('products')
+      .select('id, slug, name, description, base_rating, rating_count, created_at')
+      .order('created_at', { ascending: false });
+
+    if (pErr) {
+      console.error('[GET /products]', pErr);
+      return res.status(500).json({ error: 'Could not fetch products' });
+    }
+
+    const enriched = await Promise.all(
+      (products || []).map(async (product) => {
+        // Get min price + distinct color count from variants
+        const { data: variants } = await supabaseAdmin
+          .from('product_variants')
+          .select('price_cents, color_name')
+          .eq('product_id', product.id);
+
+        const prices = (variants || []).map((v) => v.price_cents);
+        const minPrice = prices.length ? Math.min(...prices) : null;
+        const colorCount = new Set((variants || []).map((v) => v.color_name)).size;
+
+        // Get first front image as thumbnail
+        const { data: images } = await supabaseAdmin
+          .from('product_images')
+          .select('url')
+          .eq('product_id', product.id)
+          .eq('angle', 'front')
+          .order('sort_order', { ascending: true })
+          .limit(1);
+
+        const thumbnailUrl = images?.[0]?.url || null;
+
+        return { ...product, thumbnailUrl, minPrice, colorCount };
+      })
+    );
+
+    return res.json(enriched);
+  } catch (err) {
+    console.error('[GET /products]', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
 // GET /api/products/:slug
 // Returns product + all variants + all images
 // ─────────────────────────────────────────────────────────────

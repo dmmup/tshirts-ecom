@@ -10,7 +10,7 @@ function Navbar() {
           Print<span className="text-indigo-600">Shop</span>
         </Link>
         <nav className="flex items-center gap-6 text-sm font-medium text-slate-600">
-          <Link to="/products/gildan-budget-unisex-tshirt" className="hover:text-indigo-600 transition-colors hidden sm:block">
+          <Link to="/products" className="hover:text-indigo-600 transition-colors hidden sm:block">
             Products
           </Link>
           <a href="#how-it-works" className="hover:text-indigo-600 transition-colors hidden sm:block">

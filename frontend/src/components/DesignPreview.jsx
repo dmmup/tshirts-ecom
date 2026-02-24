@@ -294,45 +294,106 @@ export default function DesignPreview({
           }}
         />
 
-        {/* ── "YOUR LOGO" placeholder ── */}
-        {!hasDesign && containerW > 0 && mockupUrl && (
-          <div
-            className="absolute pointer-events-none"
-            style={{
-              left:      `${pa.xPct * 100}%`,
-              top:       `${pa.yPct * 100}%`,
-              width:     pa.wPct * containerW * 0.58,
-              transform: 'translate(-50%, -50%)',
-              display:   'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 6,
-              opacity: 0.45,
-            }}
-          >
-            <svg viewBox="0 0 80 80" style={{ width: '50%', height: 'auto' }}>
-              <path d="M40 40 L40 10 A30 30 0 0 1 66 25 Z" fill="#f97316" />
-              <path d="M40 40 L66 25 A30 30 0 0 1 66 55 Z" fill="#eab308" />
-              <path d="M40 40 L66 55 A30 30 0 0 1 40 70 Z" fill="#22c55e" />
-              <path d="M40 40 L40 70 A30 30 0 0 1 14 55 Z" fill="#3b82f6" />
-              <path d="M40 40 L14 55 A30 30 0 0 1 14 25 Z" fill="#a855f7" />
-              <path d="M40 40 L14 25 A30 30 0 0 1 40 10 Z" fill="#ec4899" />
-              <circle cx="40" cy="40" r="13" fill="white" />
-              <circle cx="40" cy="40" r="9"  fill="#e0e7ff" />
-            </svg>
-            <span style={{
-              fontFamily:    'system-ui, sans-serif',
-              fontWeight:    700,
-              fontSize:      Math.max(9, pa.wPct * containerW * 0.11),
-              letterSpacing: '0.12em',
-              color:         '#475569',
-              textTransform: 'uppercase',
-              whiteSpace:    'nowrap',
-            }}>
-              Your Logo
-            </span>
-          </div>
-        )}
+        {/* ── "YOUR LOGO" placeholder – draggable / resizable / rotatable ── */}
+        {!hasDesign && containerW > 0 && mockupUrl && logoPlacement && (() => {
+          const logoW = logoPlacement.wPct * containerW;
+          const fontSize = Math.max(8, logoW * 0.13);
+          return (
+            <div
+              onPointerDown={startLogoDrag}
+              style={{
+                position:   'absolute',
+                left:       `${logoPlacement.x * 100}%`,
+                top:        `${logoPlacement.y * 100}%`,
+                width:      logoW,
+                transform:  `translate(-50%, -50%) rotate(${logoPlacement.rotation}deg)`,
+                cursor:     'grab',
+                touchAction:'none',
+                zIndex:     10,
+                display:    'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap:        4,
+                opacity:    0.55,
+                userSelect: 'none',
+              }}
+            >
+              {/* Aperture SVG */}
+              <svg viewBox="0 0 80 80" style={{ width: '60%', height: 'auto', display: 'block' }}>
+                <path d="M40 40 L40 10 A30 30 0 0 1 66 25 Z" fill="#f97316" />
+                <path d="M40 40 L66 25 A30 30 0 0 1 66 55 Z" fill="#eab308" />
+                <path d="M40 40 L66 55 A30 30 0 0 1 40 70 Z" fill="#22c55e" />
+                <path d="M40 40 L40 70 A30 30 0 0 1 14 55 Z" fill="#3b82f6" />
+                <path d="M40 40 L14 55 A30 30 0 0 1 14 25 Z" fill="#a855f7" />
+                <path d="M40 40 L14 25 A30 30 0 0 1 40 10 Z" fill="#ec4899" />
+                <circle cx="40" cy="40" r="13" fill="white" />
+                <circle cx="40" cy="40" r="9"  fill="#e0e7ff" />
+              </svg>
+
+              {/* Label */}
+              <span style={{
+                fontFamily:    'system-ui, sans-serif',
+                fontWeight:    700,
+                fontSize,
+                letterSpacing: '0.12em',
+                color:         '#475569',
+                textTransform: 'uppercase',
+                whiteSpace:    'nowrap',
+              }}>
+                Your Logo
+              </span>
+
+              {/* Selection outline */}
+              <div style={{
+                position: 'absolute', inset: -6,
+                border: '1.5px dashed rgba(99,102,241,0.55)',
+                borderRadius: 4,
+                pointerEvents: 'none',
+              }} />
+
+              {/* Rotate handle */}
+              <div
+                onPointerDown={startLogoRotate}
+                title="Drag to rotate"
+                style={{
+                  position: 'absolute', top: -30, left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: 22, height: 22, borderRadius: '50%',
+                  background: '#6366f1', border: '2.5px solid white',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
+                  cursor: 'grab', touchAction: 'none', zIndex: 20,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.3"/>
+                </svg>
+              </div>
+
+              {/* Corner resize handles */}
+              {[
+                { top: -6,    left: -6,  cursor: 'nwse-resize' },
+                { top: -6,    right: -6, cursor: 'nesw-resize' },
+                { bottom: -6, left: -6,  cursor: 'nesw-resize' },
+                { bottom: -6, right: -6, cursor: 'nwse-resize' },
+              ].map((pos, i) => (
+                <div
+                  key={i}
+                  onPointerDown={startLogoResize}
+                  title="Drag to resize"
+                  style={{
+                    position: 'absolute',
+                    width: 12, height: 12, borderRadius: 3,
+                    background: 'white', border: '2px solid #6366f1',
+                    boxShadow: '0 1px 4px rgba(0,0,0,0.20)',
+                    cursor: pos.cursor, touchAction: 'none', zIndex: 20,
+                    ...pos,
+                  }}
+                />
+              ))}
+            </div>
+          );
+        })()}
 
         {/* ── Design overlay ── */}
         {hasDesign && (

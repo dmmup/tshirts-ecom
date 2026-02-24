@@ -1,6 +1,6 @@
 // src/pages/CartPage.jsx
 import { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { fetchCart, updateCartItem, removeCartItem } from '../api/products';
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -247,6 +247,7 @@ function SkeletonCard() {
 
 // ── Page ──────────────────────────────────────────────────────
 export default function CartPage() {
+  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -288,10 +289,10 @@ export default function CartPage() {
     }
   }, [items, showToast]);
 
-  // Checkout placeholder
+  // Navigate to checkout
   const handleCheckout = useCallback(() => {
-    showToast('Checkout coming soon!');
-  }, [showToast]);
+    navigate('/checkout');
+  }, [navigate]);
 
   return (
     <div className="min-h-screen bg-slate-50">

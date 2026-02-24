@@ -55,62 +55,112 @@ function StarRating({ rating, count }) {
 }
 
 // ── Design Picker ─────────────────────────────────────────────
-// Compact file selector – upload is deferred to Add to Cart
-function DesignPicker({ file, localDesignUrl, onFile }) {
+// Library of up to 4 designs; each side (front/back) picks independently.
+const MAX_DESIGNS = 4;
+
+function DesignPicker({ library, side, sideDesigns, onAddFile, onApply, onRemove }) {
   const inputRef = useRef(null);
   const [error, setError] = useState('');
 
   const handleChange = (e) => {
     const f = e.target.files[0];
-    e.target.value = ''; // allow re-selecting the same file
+    e.target.value = '';
     if (!f) return;
-    if (!ALLOWED_TYPES.includes(f.type)) {
-      setError('Only PNG or SVG files are accepted.');
-      return;
-    }
-    if (f.size > MAX_DESIGN_MB * 1024 * 1024) {
-      setError(`Max file size is ${MAX_DESIGN_MB}MB.`);
-      return;
-    }
+    if (!ALLOWED_TYPES.includes(f.type)) { setError('Only PNG or SVG files are accepted.'); return; }
+    if (f.size > MAX_DESIGN_MB * 1024 * 1024) { setError(`Max file size is ${MAX_DESIGN_MB} MB.`); return; }
     setError('');
-    onFile(f);
+    onAddFile(f);
   };
 
+  const activeUrl = sideDesigns[side]?.localDesignUrl;
+
   return (
-    <div>
-      <span className="text-sm font-semibold text-slate-700 block mb-2.5">Your Design</span>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-semibold text-slate-700">Your Designs</span>
+        <span className="text-xs text-slate-400">{library.length}/{MAX_DESIGNS} uploaded</span>
+      </div>
+
+      {/* Design library grid */}
+      <div className="flex flex-wrap gap-2">
+        {library.map((design) => {
+          const isActiveFront = sideDesigns.front?.localDesignUrl === design.localUrl;
+          const isActiveBack  = sideDesigns.back?.localDesignUrl  === design.localUrl;
+          const isActiveSide  = side === 'front' ? isActiveFront : isActiveBack;
+          return (
+            <div key={design.id} className="relative group">
+              <button
+                onClick={() => onApply(design)}
+                title={design.file.name}
+                className={`w-16 h-16 rounded-xl border-2 overflow-hidden bg-slate-50 flex items-center justify-center transition-all ${
+                  isActiveSide ? 'border-indigo-500 shadow-md shadow-indigo-100' : 'border-slate-200 hover:border-indigo-300'
+                }`}
+              >
+                <img src={design.localUrl} alt={design.file.name} className="w-full h-full object-contain p-1" />
+              </button>
+
+              {/* Side badges */}
+              <div className="absolute -bottom-1 left-0 right-0 flex justify-center gap-0.5">
+                {isActiveFront && (
+                  <span className="text-[9px] font-bold bg-indigo-600 text-white px-1 rounded">F</span>
+                )}
+                {isActiveBack && (
+                  <span className="text-[9px] font-bold bg-slate-700 text-white px-1 rounded">B</span>
+                )}
+              </div>
+
+              {/* Remove button */}
+              <button
+                onClick={() => onRemove(design.id)}
+                className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-white border border-slate-200 rounded-full text-slate-400 hover:text-red-500 hover:border-red-300 transition-colors flex items-center justify-center text-xs shadow-sm opacity-0 group-hover:opacity-100"
+              >✕</button>
+            </div>
+          );
+        })}
+
+        {/* Add slot */}
+        {library.length < MAX_DESIGNS && (
+          <button
+            onClick={() => inputRef.current?.click()}
+            className="w-16 h-16 rounded-xl border-2 border-dashed border-slate-300 hover:border-indigo-400 hover:bg-indigo-50 transition-all flex flex-col items-center justify-center gap-0.5 text-slate-400 hover:text-indigo-500"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/>
+            </svg>
+            <span className="text-[10px] font-semibold">Add</span>
+          </button>
+        )}
+      </div>
+
       <input ref={inputRef} type="file" className="hidden" accept=".png,.svg" onChange={handleChange} />
 
-      {file && localDesignUrl ? (
-        <div className="flex items-center gap-3 p-3 bg-emerald-50 rounded-xl border border-emerald-200">
-          <div className="w-10 h-10 rounded-lg bg-white border border-emerald-200 overflow-hidden flex-shrink-0">
-            <img src={localDesignUrl} alt="design thumbnail" className="w-full h-full object-contain" />
+      {/* Per-side status */}
+      <div className="flex gap-3 text-xs">
+        {['front', 'back'].map(s => (
+          <div key={s} className={`flex items-center gap-1 px-2 py-1 rounded-lg ${
+            side === s ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-slate-500'
+          }`}>
+            <span className="capitalize">{s}:</span>
+            <span className={sideDesigns[s]?.localDesignUrl ? 'text-emerald-600' : 'text-slate-400'}>
+              {sideDesigns[s]?.localDesignUrl ? '✓ design set' : 'no design'}
+            </span>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-emerald-700 truncate">{file.name}</p>
-            <button onClick={() => inputRef.current?.click()} className="text-xs text-indigo-600 hover:underline">
-              Change design
-            </button>
-          </div>
-          <button
-            onClick={() => onFile(null)}
-            className="w-6 h-6 flex items-center justify-center rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors text-sm font-bold"
-          >
-            ✕
-          </button>
-        </div>
-      ) : (
+        ))}
+      </div>
+
+      {error && <p className="text-xs text-red-500">{error}</p>}
+
+      {!activeUrl && library.length === 0 && (
         <button
           onClick={() => inputRef.current?.click()}
-          className="w-full py-3.5 px-4 border-2 border-dashed border-slate-300 rounded-xl text-sm text-slate-500 hover:border-indigo-400 hover:text-indigo-600 transition-all flex items-center justify-center gap-2"
+          className="w-full py-3 px-4 border-2 border-dashed border-slate-300 rounded-xl text-sm text-slate-500 hover:border-indigo-400 hover:text-indigo-600 transition-all flex items-center justify-center gap-2"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
           </svg>
-          Upload design (PNG / SVG · max {MAX_DESIGN_MB}MB)
+          Upload design (PNG / SVG · max {MAX_DESIGN_MB} MB)
         </button>
       )}
-      {error && <p className="mt-1.5 text-xs text-red-500">{error}</p>}
     </div>
   );
 }
@@ -535,10 +585,16 @@ export default function ProductDetailPage() {
   const [decoration, setDecoration]       = useState('dtg');
 
   // Preview / design
-  const [side, setSide]               = useState('front');
-  const [pendingFile, setPendingFile] = useState(null);        // File – uploaded lazily on Add to Cart
-  const [localDesignUrl, setLocalDesignUrl] = useState(null); // blob URL for instant preview
-  const [placement, setPlacement]     = useState(null);        // { x, y, wPct, rotation, flipped }
+  const [side, setSide] = useState('front');
+
+  // Library of uploaded designs (max 4) – { id, file, localUrl }
+  const [designLibrary, setDesignLibrary] = useState([]);
+
+  // Per-side design: front and back are independent
+  const [sideDesigns, setSideDesigns] = useState({
+    front: { pendingFile: null, localDesignUrl: null, placement: null },
+    back:  { pendingFile: null, localDesignUrl: null, placement: null },
+  });
 
   // Cart / UI
   const [addingToCart, setAddingToCart]     = useState(false);
@@ -602,10 +658,12 @@ export default function ProductDetailPage() {
       .catch(err => { setError(err.message); setLoading(false); });
   }, [slug]);
 
-  // Revoke blob URL when it changes or on unmount
+  // Revoke all blob URLs when component unmounts
   useEffect(() => {
-    return () => { if (localDesignUrl) URL.revokeObjectURL(localDesignUrl); };
-  }, [localDesignUrl]);
+    return () => {
+      designLibrary.forEach(d => URL.revokeObjectURL(d.localUrl));
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Derived data
   const uniqueColors = variants.reduce((acc, v) => {
@@ -645,22 +703,57 @@ export default function ProductDetailPage() {
     setSide('front'); // reset side so we never stay stuck on 'back' for a colour that only has 'front'
   };
 
-  // File selected → instant local preview; actual upload deferred
-  const handleFileSelect = useCallback((file) => {
-    if (localDesignUrl) URL.revokeObjectURL(localDesignUrl);
-    if (!file) {
-      setPendingFile(null);
-      setLocalDesignUrl(null);
-      setPlacement(null);
-      return;
-    }
-    const url = URL.createObjectURL(file);
-    setPendingFile(file);
-    setLocalDesignUrl(url);
-    setPlacement(makeDefaultPlacement(side));
-  }, [localDesignUrl, side]);
+  // Add a new file to the library and apply it to the current side
+  const handleAddFile = useCallback((file) => {
+    if (designLibrary.length >= MAX_DESIGNS) return;
+    const localUrl = URL.createObjectURL(file);
+    const newDesign = { id: Date.now(), file, localUrl };
+    setDesignLibrary(prev => [...prev, newDesign]);
+    setSideDesigns(prev => ({
+      ...prev,
+      [side]: {
+        pendingFile: file,
+        localDesignUrl: localUrl,
+        placement: prev[side].placement || makeDefaultPlacement(side),
+      },
+    }));
+  }, [designLibrary.length, side]);
 
-  // Add to cart: upload design (if any) then persist config + placement
+  // Apply an existing library design to the current side
+  const handleApplyDesign = useCallback((design) => {
+    setSideDesigns(prev => ({
+      ...prev,
+      [side]: {
+        pendingFile: design.file,
+        localDesignUrl: design.localUrl,
+        placement: prev[side].placement || makeDefaultPlacement(side),
+      },
+    }));
+  }, [side]);
+
+  // Remove a design from the library and clear it from any side using it
+  const handleRemoveDesign = useCallback((id) => {
+    const design = designLibrary.find(d => d.id === id);
+    if (!design) return;
+    URL.revokeObjectURL(design.localUrl);
+    setDesignLibrary(prev => prev.filter(d => d.id !== id));
+    setSideDesigns(prev => {
+      const next = { ...prev };
+      for (const s of ['front', 'back']) {
+        if (next[s].localDesignUrl === design.localUrl) {
+          next[s] = { pendingFile: null, localDesignUrl: null, placement: null };
+        }
+      }
+      return next;
+    });
+  }, [designLibrary]);
+
+  // Update placement for the current side
+  const handlePlacementChange = useCallback((p) => {
+    setSideDesigns(prev => ({ ...prev, [side]: { ...prev[side], placement: p } }));
+  }, [side]);
+
+  // Add to cart: upload front + back designs independently, then persist
   const handleAddToCart = async () => {
     if (!selectedVariant) {
       setToast({ message: 'Please select a size', type: 'error' });
@@ -669,31 +762,52 @@ export default function ProductDetailPage() {
     setAddingToCart(true);
     setUploadProgress(0);
     try {
-      let designStoragePath = null;
-      let designPreviewUrl  = null;
+      const anonId = getAnonymousId();
 
-      if (pendingFile) {
-        const result = await uploadDesign({
-          file: pendingFile,
-          anonymousId: getAnonymousId(),
+      // Upload front design if present
+      let frontResult = null;
+      if (sideDesigns.front.pendingFile) {
+        frontResult = await uploadDesign({
+          file: sideDesigns.front.pendingFile,
+          anonymousId: anonId,
           onProgress: setUploadProgress,
         });
-        designStoragePath = result.storagePath;
-        designPreviewUrl  = result.previewUrl;
+      }
+
+      // Upload back design if present (and different from front)
+      let backResult = null;
+      if (sideDesigns.back.pendingFile &&
+          sideDesigns.back.pendingFile !== sideDesigns.front.pendingFile) {
+        backResult = await uploadDesign({
+          file: sideDesigns.back.pendingFile,
+          anonymousId: anonId,
+        });
+      } else if (sideDesigns.back.pendingFile &&
+                 sideDesigns.back.pendingFile === sideDesigns.front.pendingFile) {
+        // Same file on both sides – reuse the front upload result
+        backResult = frontResult;
       }
 
       const config = {
         backside,
         decoration,
-        color: selectedColor,
-        size: selectedSize,
-        side,
-        design_url:         designStoragePath,
-        design_preview_url: designPreviewUrl,
-        placement:          placement ?? null,
+        color:  selectedColor,
+        size:   selectedSize,
+        front: frontResult ? {
+          design_url:         frontResult.storagePath,
+          design_preview_url: frontResult.previewUrl,
+          placement:          sideDesigns.front.placement ?? null,
+        } : null,
+        back: backResult ? {
+          design_url:         backResult.storagePath,
+          design_preview_url: backResult.previewUrl,
+          placement:          sideDesigns.back.placement ?? null,
+        } : null,
+        // Legacy field for cart preview thumbnail
+        design_preview_url: frontResult?.previewUrl || backResult?.previewUrl || null,
       };
 
-      await addToCart({ variantId: selectedVariant.id, quantity: 1, config, anonymousId: getAnonymousId() });
+      await addToCart({ variantId: selectedVariant.id, quantity: 1, config, anonymousId: anonId });
       await loadCart();
     } catch (err) {
       setToast({ message: err.message || 'Failed to add to cart', type: 'error' });
@@ -731,9 +845,10 @@ export default function ProductDetailPage() {
   }
 
   // Add-to-cart button label
+  const hasPendingFile = sideDesigns.front.pendingFile || sideDesigns.back.pendingFile;
   const cartBtnLabel = (() => {
     if (!addingToCart) return 'Add to Cart';
-    if (pendingFile && uploadProgress < 100) return `Uploading… ${uploadProgress}%`;
+    if (hasPendingFile && uploadProgress < 100) return `Uploading… ${uploadProgress}%`;
     return (
       <span className="flex items-center justify-center gap-2">
         <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -776,19 +891,11 @@ export default function ProductDetailPage() {
               side={side}
               onSideChange={setSide}
               availableSides={availableSides}
-              localDesignUrl={localDesignUrl}
-              placement={placement}
-              onPlacementChange={setPlacement}
+              localDesignUrl={sideDesigns[side].localDesignUrl}
+              placement={sideDesigns[side].placement}
+              onPlacementChange={handlePlacementChange}
             />
 
-            {/* ── Dev debug panel ── */}
-            {import.meta.env.DEV && (
-              <div className="font-mono text-[11px] bg-slate-900 text-slate-300 rounded-lg px-3 py-2 space-y-0.5 border border-slate-700">
-                <div><span className="text-slate-500">color·</span> {selectedColor ?? '—'}</div>
-                <div><span className="text-slate-500">side·</span>  {side}</div>
-                <div className="break-all"><span className="text-slate-500">url·</span> {currentMockup?.url ?? <span className="text-red-400">none</span>}</div>
-              </div>
-            )}
           </div>
 
           {/* ── Right: Product info + options ──────────────── */}
@@ -819,11 +926,14 @@ export default function ProductDetailPage() {
 
             <hr className="border-slate-100" />
 
-            {/* Compact design picker – preview shown instantly in left column */}
+            {/* Design library – up to 4 designs, per-side independent */}
             <DesignPicker
-              file={pendingFile}
-              localDesignUrl={localDesignUrl}
-              onFile={handleFileSelect}
+              library={designLibrary}
+              side={side}
+              sideDesigns={sideDesigns}
+              onAddFile={handleAddFile}
+              onApply={handleApplyDesign}
+              onRemove={handleRemoveDesign}
             />
 
             {/* CTA */}

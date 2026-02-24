@@ -5,6 +5,13 @@
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
+// ── Fetch all products (catalog) ─────────────────────────────
+export async function fetchProducts() {
+  const res = await fetch(`${API_BASE}/products`);
+  if (!res.ok) throw new Error('Could not fetch products');
+  return res.json(); // array of { id, slug, name, thumbnailUrl, minPrice, colorCount, ... }
+}
+
 // ── Fetch product with variants + images ────────────────────
 export async function fetchProduct(slug) {
   const res = await fetch(`${API_BASE}/products/${slug}`);
@@ -132,4 +139,18 @@ export async function removeCartItem(itemId) {
     throw new Error(err.error || 'Could not remove item');
   }
   return res.json(); // { success }
+}
+
+// ── Create Stripe PaymentIntent ──────────────────────────────
+export async function createPaymentIntent({ anonymousId, shipping }) {
+  const res = await fetch(`${API_BASE}/checkout/create-payment-intent`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ anonymousId, shipping }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Could not create payment intent');
+  }
+  return res.json(); // { clientSecret, totalCents, cartId }
 }

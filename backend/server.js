@@ -16,6 +16,11 @@ app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:5173',
   credentials: true,
 }));
+
+// ── Webhook (raw body — must come BEFORE express.json) ────────
+const { router: checkoutRouter, handleWebhook } = require('./routes/checkout');
+app.post('/api/checkout/webhook', express.raw({ type: 'application/json' }), handleWebhook);
+
 app.use(express.json());
 
 // ── Routes ────────────────────────────────────────────────────
@@ -32,6 +37,17 @@ app.use('/api/products', productsRouter);
 //           PATCH  /api/cart/items/:itemId
 //           DELETE /api/cart/items/:itemId
 app.use('/api/cart', cartRouter);
+
+// Checkout: POST /api/checkout/create-payment-intent
+//           POST /api/checkout/webhook (handled above with raw body)
+app.use('/api/checkout', checkoutRouter);
+
+// Admin:    POST /api/admin/verify
+//           GET  /api/admin/orders
+//           GET  /api/admin/orders/:id
+//           PATCH /api/admin/orders/:id/status
+const adminRouter = require('./routes/admin');
+app.use('/api/admin', adminRouter);
 
 // Health check
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
