@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { fetchProduct, uploadDesign, addToCart, fetchCart, removeCartItem, updateCartItem } from '../api/products';
+import { fetchProduct, fetchRelatedProducts, fetchReviews, submitReview, uploadDesign, addToCart, fetchCart, removeCartItem, updateCartItem } from '../api/products';
 import DesignPreview, { makeDefaultPlacement } from '../components/DesignPreview';
 import { useAuth } from '../context/AuthContext';
 
@@ -556,17 +556,259 @@ function CartPreviewPanel({ items, loading, onRemove, onQtyChange }) {
   );
 }
 
+// ── Interactive star picker (for review form) ─────────────────
+function StarPicker({ value, onChange }) {
+  const [hovered, setHovered] = useState(0);
+  return (
+    <div className="flex gap-1">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <button
+          key={star}
+          type="button"
+          onClick={() => onChange(star)}
+          onMouseEnter={() => setHovered(star)}
+          onMouseLeave={() => setHovered(0)}
+          className="focus:outline-none"
+          aria-label={`${star} star${star > 1 ? 's' : ''}`}
+        >
+          <svg
+            className={`w-8 h-8 transition-colors ${
+              star <= (hovered || value) ? 'text-amber-400' : 'text-slate-200'
+            }`}
+            fill="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+          </svg>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ── Reviews Section ───────────────────────────────────────────
+function ReviewsSection({ slug, product, session }) {
+  const [reviews, setReviews] = useState([]);
+  const [loadingReviews, setLoadingReviews] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [submitDone, setSubmitDone] = useState(false);
+
+  // Live aggregate (updates after submission without page reload)
+  const [liveRating, setLiveRating] = useState(null);
+  const [liveCount, setLiveCount] = useState(null);
+
+  // Form fields
+  const [rating, setRating] = useState(0);
+  const [reviewerName, setReviewerName] = useState('');
+  const [comment, setComment] = useState('');
+
+  useEffect(() => {
+    setLoadingReviews(true);
+    setSubmitDone(false);
+    fetchReviews(slug)
+      .then(setReviews)
+      .catch(() => setReviews([]))
+      .finally(() => setLoadingReviews(false));
+  }, [slug]);
+
+  const displayRating = liveRating ?? product?.base_rating ?? 0;
+  const displayCount  = liveCount  ?? product?.rating_count ?? 0;
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (rating === 0) { setSubmitError('Please select a rating.'); return; }
+    setSubmitError('');
+    setSubmitting(true);
+    try {
+      const result = await submitReview(slug, {
+        rating,
+        comment,
+        reviewerName,
+        anonymousId: localStorage.getItem('pdp_anon_id'),
+        accessToken: session?.access_token || null,
+      });
+      // Prepend new review to list
+      setReviews(prev => [result.review, ...prev]);
+      setLiveRating(result.newRating);
+      setLiveCount(result.newCount);
+      setSubmitDone(true);
+      setShowForm(false);
+      setRating(0);
+      setReviewerName('');
+      setComment('');
+    } catch (err) {
+      setSubmitError(err.message || 'Could not submit review.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const ratingBars = [5, 4, 3, 2, 1].map((star) => ({
+    star,
+    count: reviews.filter((r) => r.rating === star).length,
+  }));
+
+  return (
+    <div className="pt-6 pb-10 border-t border-slate-100">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div>
+          <h2 className="text-lg font-bold text-slate-900">Customer Reviews</h2>
+          {displayCount > 0 && (
+            <div className="flex items-center gap-2 mt-1">
+              <StarRating rating={displayRating} count={displayCount} />
+            </div>
+          )}
+        </div>
+        {!showForm && !submitDone && (
+          <button
+            onClick={() => setShowForm(true)}
+            className="self-start sm:self-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl transition-colors"
+          >
+            Write a Review
+          </button>
+        )}
+        {submitDone && (
+          <span className="text-sm text-emerald-600 font-medium">Thanks for your review!</span>
+        )}
+      </div>
+
+      {/* Rating distribution */}
+      {reviews.length > 0 && (
+        <div className="flex flex-col gap-1.5 mb-8 max-w-xs">
+          {ratingBars.map(({ star, count }) => (
+            <div key={star} className="flex items-center gap-2 text-xs text-slate-500">
+              <span className="w-4 text-right font-medium">{star}</span>
+              <svg className="w-3 h-3 text-amber-400 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+              </svg>
+              <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-amber-400 rounded-full transition-all"
+                  style={{ width: reviews.length ? `${(count / reviews.length) * 100}%` : '0%' }}
+                />
+              </div>
+              <span className="w-4">{count}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Review form */}
+      {showForm && (
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white rounded-2xl border border-slate-200 p-5 mb-8 space-y-4 shadow-sm"
+        >
+          <h3 className="font-semibold text-slate-800">Your Review</h3>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Rating</label>
+            <StarPicker value={rating} onChange={setRating} />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Name <span className="text-slate-400 font-normal">(optional)</span></label>
+            <input
+              type="text"
+              value={reviewerName}
+              onChange={(e) => setReviewerName(e.target.value)}
+              placeholder="Your name"
+              maxLength={80}
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Comment <span className="text-slate-400 font-normal">(optional)</span></label>
+            <textarea
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder="What did you think of this product?"
+              rows={3}
+              maxLength={1000}
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
+            />
+          </div>
+
+          {submitError && <p className="text-sm text-red-500">{submitError}</p>}
+
+          <div className="flex gap-3">
+            <button
+              type="submit"
+              disabled={submitting}
+              className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors"
+            >
+              {submitting ? 'Submitting…' : 'Submit Review'}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setShowForm(false); setSubmitError(''); }}
+              className="px-5 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-xl hover:border-slate-300 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Reviews list */}
+      {loadingReviews ? (
+        <div className="space-y-4">
+          {[1, 2].map((i) => (
+            <div key={i} className="animate-pulse space-y-2">
+              <div className="h-3 bg-slate-100 rounded w-1/4" />
+              <div className="h-2.5 bg-slate-100 rounded w-3/4" />
+              <div className="h-2.5 bg-slate-100 rounded w-1/2" />
+            </div>
+          ))}
+        </div>
+      ) : reviews.length === 0 ? (
+        <p className="text-sm text-slate-400">No reviews yet. Be the first to write one!</p>
+      ) : (
+        <div className="space-y-5">
+          {reviews.map((review) => (
+            <div key={review.id} className="border-b border-slate-100 pb-5 last:border-0 last:pb-0">
+              <div className="flex items-center gap-3 mb-1.5">
+                <div className="flex text-amber-400">
+                  {Array.from({ length: 5 }, (_, i) => (
+                    <svg key={i} className="w-3.5 h-3.5" fill={i < review.rating ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+                    </svg>
+                  ))}
+                </div>
+                <span className="text-sm font-semibold text-slate-800">
+                  {review.reviewer_name || 'Anonymous'}
+                </span>
+                <span className="text-xs text-slate-400">
+                  {new Date(review.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                </span>
+              </div>
+              {review.comment && (
+                <p className="text-sm text-slate-600 leading-relaxed">{review.comment}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main PDP ─────────────────────────────────────────────────
 export default function ProductDetailPage() {
   const { slug } = useParams();
-  const { user } = useAuth();
+  const { user, session } = useAuth();
 
   // Product data
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState(null);
-  const [product, setProduct]   = useState(null);
-  const [variants, setVariants] = useState([]);
-  const [images, setImages]     = useState([]);
+  const [loading, setLoading]         = useState(true);
+  const [error, setError]             = useState(null);
+  const [product, setProduct]         = useState(null);
+  const [variants, setVariants]       = useState([]);
+  const [images, setImages]           = useState([]);
+  const [relatedProducts, setRelatedProducts] = useState([]);
 
   // Selections
   const [selectedColor, setSelectedColor] = useState(null);
@@ -634,6 +876,7 @@ export default function ProductDetailPage() {
   useEffect(() => {
     setLoading(true);
     setError(null);
+    setRelatedProducts([]);
     fetchProduct(slug)
       .then(({ product, variants, images }) => {
         setProduct(product);
@@ -644,6 +887,7 @@ export default function ProductDetailPage() {
         const sorted = sortSizes(variants.filter(v => v.color_name === firstColor).map(v => v.size));
         setSelectedSize(sorted[0] || null);
         setLoading(false);
+        fetchRelatedProducts(slug).then(setRelatedProducts).catch(() => {});
       })
       .catch(err => { setError(err.message); setLoading(false); });
   }, [slug]);
@@ -1038,6 +1282,55 @@ export default function ProductDetailPage() {
 
           </div>
         </div>
+
+        {/* ── You might also like ────────────────────────── */}
+        {relatedProducts.length > 0 && (
+          <div className="pt-4 pb-8">
+            <h2 className="text-lg font-semibold text-slate-800 mb-4">You might also like</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {relatedProducts.map((p) => (
+                <Link
+                  key={p.id}
+                  to={`/products/${p.slug}`}
+                  className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 flex flex-col"
+                >
+                  <div className="aspect-[4/5] bg-slate-100 overflow-hidden relative">
+                    {p.thumbnailUrl ? (
+                      <img src={p.thumbnailUrl} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <svg className="w-10 h-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-3 flex flex-col gap-1">
+                    <p className="text-sm font-medium text-slate-800 leading-snug line-clamp-2">{p.name}</p>
+                    {p.minPrice && (
+                      <p className="text-sm font-semibold text-indigo-600">
+                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(p.minPrice / 100)}
+                      </p>
+                    )}
+                    {p.colors?.length > 0 && (
+                      <div className="flex gap-1 mt-0.5">
+                        {p.colors.slice(0, 5).map((c) => (
+                          <span key={c.name} title={c.name} className="w-3 h-3 rounded-full border border-slate-200 flex-shrink-0" style={{ background: c.hex }} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Reviews ──────────────────────────────────────── */}
+        {product && (
+          <ReviewsSection slug={slug} product={product} session={session} />
+        )}
+
       </div>
 
       {toast && <Toast message={toast.message} type={toast.type} onDismiss={() => setToast(null)} />}

@@ -1,3 +1,4 @@
+import { Component } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import ProductDetailPage from './pages/ProductDetailPage';
@@ -16,6 +17,36 @@ import LoginPage from './pages/LoginPage';
 import AccountPage from './pages/AccountPage';
 import CategoryPage from './pages/CategoryPage';
 
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-50">
+          <div className="text-center space-y-4 max-w-md px-6">
+            <p className="text-5xl font-bold text-slate-200">Oops</p>
+            <p className="text-lg font-semibold text-slate-700">Something went wrong</p>
+            <p className="text-sm text-slate-500">{this.state.error.message}</p>
+            <button
+              onClick={() => window.location.assign('/')}
+              className="mt-2 inline-block px-5 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700"
+            >
+              Back to home
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function NotFound() {
   return (
     <div className="min-h-screen flex items-center justify-center">
@@ -32,6 +63,7 @@ function NotFound() {
 
 export default function App() {
   return (
+    <ErrorBoundary>
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<HomePage />} />
@@ -54,5 +86,6 @@ export default function App() {
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
+    </ErrorBoundary>
   );
 }

@@ -157,11 +157,41 @@ export async function createPaymentIntent({ anonymousId, shipping, accessToken }
   return res.json(); // { clientSecret, totalCents, cartId }
 }
 
+// ── Fetch related products (same category, excluding current) ─
+export async function fetchRelatedProducts(slug) {
+  const res = await fetch(`${API_BASE}/products/${encodeURIComponent(slug)}/related`);
+  if (!res.ok) return [];
+  return res.json(); // [{ id, slug, name, thumbnailUrl, minPrice, colors, base_rating, rating_count }]
+}
+
 // ── Fetch all categories ─────────────────────────────────────
 export async function fetchCategories() {
   const res = await fetch(`${API_BASE}/categories`);
   if (!res.ok) throw new Error('Could not fetch categories');
   return res.json(); // [{ id, slug, name, image_url, sort_order }]
+}
+
+// ── Fetch reviews for a product ───────────────────────────────
+export async function fetchReviews(slug) {
+  const res = await fetch(`${API_BASE}/products/${encodeURIComponent(slug)}/reviews`);
+  if (!res.ok) return [];
+  return res.json(); // [{ id, rating, comment, reviewer_name, created_at }]
+}
+
+// ── Submit a review ───────────────────────────────────────────
+export async function submitReview(slug, { rating, comment, reviewerName, anonymousId, accessToken }) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+  const res = await fetch(`${API_BASE}/products/${encodeURIComponent(slug)}/reviews`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ rating, comment, reviewerName, anonymousId }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Could not submit review');
+  }
+  return res.json(); // { review, newRating, newCount }
 }
 
 // ── Fetch products for a category ───────────────────────────

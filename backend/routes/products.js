@@ -111,6 +111,160 @@ router.get('/:slug', async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────
+// GET /api/products/:slug/related
+// Returns up to 4 products in the same category, excluding current
+// ─────────────────────────────────────────────────────────────
+router.get('/:slug/related', async (req, res) => {
+  const { slug } = req.params;
+  try {
+    const { data: product } = await supabaseAdmin
+      .from('products')
+      .select('id, category_id')
+      .eq('slug', slug)
+      .maybeSingle();
+
+    if (!product?.category_id) return res.json([]);
+
+    const { data: products, error } = await supabaseAdmin
+      .from('products')
+      .select('id, slug, name, base_rating, rating_count, created_at')
+      .eq('category_id', product.category_id)
+      .neq('id', product.id)
+      .order('created_at', { ascending: false })
+      .limit(4);
+
+    if (error) return res.json([]);
+
+    const enriched = await Promise.all((products || []).map(async (p) => {
+      const { data: variants } = await supabaseAdmin
+        .from('product_variants')
+        .select('price_cents, color_name, color_hex')
+        .eq('product_id', p.id);
+      const prices = (variants || []).map((v) => v.price_cents);
+      const minPrice = prices.length ? Math.min(...prices) : null;
+      const colorMap = {};
+      (variants || []).forEach((v) => { if (!colorMap[v.color_name]) colorMap[v.color_name] = v.color_hex || '#888888'; });
+      const colors = Object.entries(colorMap).map(([name, hex]) => ({ name, hex }));
+      const { data: images } = await supabaseAdmin
+        .from('product_images')
+        .select('url')
+        .eq('product_id', p.id)
+        .eq('angle', 'front')
+        .order('sort_order', { ascending: true })
+        .limit(1);
+      return { ...p, thumbnailUrl: images?.[0]?.url || null, minPrice, colors };
+    }));
+
+    return res.json(enriched);
+  } catch (err) {
+    console.error('[GET /products/:slug/related]', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// GET /api/products/:slug/reviews
+// Returns all reviews for a product (newest first)
+// ─────────────────────────────────────────────────────────────
+router.get('/:slug/reviews', async (req, res) => {
+  const { slug } = req.params;
+  try {
+    const { data: product } = await supabaseAdmin
+      .from('products')
+      .select('id')
+      .eq('slug', slug)
+      .maybeSingle();
+
+    if (!product) return res.status(404).json({ error: 'Product not found' });
+
+    const { data: reviews, error } = await supabaseAdmin
+      .from('product_reviews')
+      .select('id, rating, comment, reviewer_name, created_at')
+      .eq('product_id', product.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('[GET /products/:slug/reviews]', error);
+      return res.status(500).json({ error: 'Could not fetch reviews' });
+    }
+
+    return res.json(reviews || []);
+  } catch (err) {
+    console.error('[GET /products/:slug/reviews]', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// POST /api/products/:slug/reviews
+// Body: { rating, comment?, reviewerName?, anonymousId? }
+// Updates product base_rating + rating_count after insert
+// ─────────────────────────────────────────────────────────────
+router.post('/:slug/reviews', async (req, res) => {
+  const { slug } = req.params;
+  const { rating, comment, reviewerName, anonymousId } = req.body;
+
+  const ratingInt = parseInt(rating, 10);
+  if (!ratingInt || ratingInt < 1 || ratingInt > 5) {
+    return res.status(400).json({ error: 'Rating must be between 1 and 5' });
+  }
+
+  // Optionally resolve authenticated user
+  let userId = null;
+  const authHeader = req.headers.authorization;
+  if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.slice(7);
+    const { data: { user } } = await supabaseAdmin.auth.getUser(token).catch(() => ({ data: {} }));
+    userId = user?.id ?? null;
+  }
+
+  try {
+    const { data: product } = await supabaseAdmin
+      .from('products')
+      .select('id, rating_count, base_rating')
+      .eq('slug', slug)
+      .maybeSingle();
+
+    if (!product) return res.status(404).json({ error: 'Product not found' });
+
+    // Insert review
+    const { data: review, error: rErr } = await supabaseAdmin
+      .from('product_reviews')
+      .insert({
+        product_id: product.id,
+        user_id: userId || null,
+        anonymous_id: anonymousId || null,
+        rating: ratingInt,
+        comment: comment?.trim() || null,
+        reviewer_name: reviewerName?.trim() || null,
+      })
+      .select()
+      .single();
+
+    if (rErr) {
+      console.error('[POST /products/:slug/reviews]', rErr);
+      return res.status(500).json({ error: 'Could not save review' });
+    }
+
+    // Recompute aggregate rating
+    const currentCount = product.rating_count || 0;
+    const currentRating = product.base_rating || 0;
+    const newCount = currentCount + 1;
+    const newRating = Math.round(((currentRating * currentCount) + ratingInt) / newCount * 10) / 10;
+
+    await supabaseAdmin
+      .from('products')
+      .update({ base_rating: newRating, rating_count: newCount })
+      .eq('id', product.id);
+
+    return res.status(201).json({ review, newRating, newCount });
+  } catch (err) {
+    console.error('[POST /products/:slug/reviews]', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
 // POST /api/products/upload/sign
 // Body: { filename, contentType, userId?, anonymousId? }
 // Returns: { signedUrl, storagePath, token }
