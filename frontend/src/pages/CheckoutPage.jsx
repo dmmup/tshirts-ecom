@@ -9,6 +9,9 @@ import {
 } from '@stripe/react-stripe-js';
 import { stripePromise } from '../lib/stripe';
 import { fetchCart, createPaymentIntent } from '../api/products';
+import { useAuth } from '../context/AuthContext';
+
+const API = import.meta.env.VITE_API_URL || '/api';
 
 // ── Helpers ───────────────────────────────────────────────────
 function getAnonymousId() {
@@ -223,6 +226,7 @@ function PaymentForm({ totalCents, shipping, onShippingChange, items, clientSecr
 // ── Page ──────────────────────────────────────────────────────
 export default function CheckoutPage() {
   const navigate = useNavigate();
+  const { user, session } = useAuth();
 
   const [items, setItems] = useState([]);
   const [clientSecret, setClientSecret] = useState(null);
@@ -235,6 +239,29 @@ export default function CheckoutPage() {
   });
 
   const anonymousId = getAnonymousId();
+
+  // Pre-fill shipping form from user profile
+  useEffect(() => {
+    if (!session?.access_token) return;
+    fetch(`${API}/account/profile`, {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    })
+      .then((r) => r.json())
+      .then((profile) => {
+        if (!profile || profile.error) return;
+        setShipping((prev) => ({
+          ...prev,
+          name: prev.name || profile.full_name || '',
+          email: prev.email || user?.email || '',
+          line1: prev.line1 || profile.default_shipping_line1 || '',
+          line2: prev.line2 || profile.default_shipping_line2 || '',
+          city: prev.city || profile.default_shipping_city || '',
+          state: prev.state || profile.default_shipping_state || '',
+          postal_code: prev.postal_code || profile.default_shipping_postal_code || '',
+        }));
+      })
+      .catch(() => {});
+  }, [session, user]);
 
   const bootstrap = useCallback(async () => {
     if (!anonymousId) {
@@ -251,8 +278,11 @@ export default function CheckoutPage() {
       }
       setItems(fetched);
 
-      // Create PaymentIntent
-      const { clientSecret: cs, totalCents: total } = await createPaymentIntent({ anonymousId });
+      // Create PaymentIntent (pass JWT if logged in)
+      const { clientSecret: cs, totalCents: total } = await createPaymentIntent({
+        anonymousId,
+        accessToken: session?.access_token,
+      });
       setClientSecret(cs);
       setTotalCents(total);
     } catch (err) {
@@ -260,7 +290,7 @@ export default function CheckoutPage() {
     } finally {
       setLoading(false);
     }
-  }, [anonymousId, navigate]);
+  }, [anonymousId, navigate, session]);
 
   useEffect(() => {
     bootstrap();

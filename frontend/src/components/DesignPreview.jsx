@@ -35,6 +35,7 @@ export function makeDefaultPlacement(side = 'front') {
  */
 export default function DesignPreview({
   mockupUrl,
+  selectedColorHex,   // when set, tints the base mockup; null/undefined = no tint
   side,
   onSideChange,
   availableSides = ['front'],
@@ -48,7 +49,8 @@ export default function DesignPreview({
 
   const [containerW, setContainerW] = useState(0);
   const [designAR, setDesignAR]     = useState(1);
-  const [imgLoaded, setImgLoaded]   = useState(false);
+  const [loadedUrl, setLoadedUrl]   = useState(null);
+  const imgLoaded = loadedUrl === mockupUrl;
 
   // Logo placeholder: own drag/resize/rotate state
   const logoPlacementRef = useRef(null);
@@ -74,8 +76,7 @@ export default function DesignPreview({
     return () => ro.disconnect();
   }, []);
 
-  // Reset img-loaded state when mockup changes
-  useEffect(() => { setImgLoaded(false); }, [mockupUrl]);
+  // (loadedUrl tracks which URL has loaded — no separate reset needed)
 
   // Measure design aspect ratio once loaded
   useEffect(() => {
@@ -249,11 +250,17 @@ export default function DesignPreview({
       {/* ── Canvas ────────────────────────────────────────────── */}
       <div
         ref={containerRef}
-        className="relative aspect-[4/5] bg-slate-100 rounded-2xl overflow-hidden border border-slate-200 select-none"
+        className="relative h-[520px] bg-slate-100 rounded-2xl overflow-hidden border border-slate-200 select-none"
       >
-        {/* ── Mockup photo ── */}
+        {/* ── Mockup photo + colour tint ──────────────────────────
+             The image and tint share an isolated stacking context
+             so multiply only blends against the image pixels —
+             the canvas bg-slate-100 is never affected.             */}
         {mockupUrl ? (
-          <>
+          <div
+            className="absolute inset-0"
+            style={{ isolation: 'isolate' }}
+          >
             {/* Skeleton shimmer while photo loads */}
             {!imgLoaded && (
               <div className="absolute inset-0 animate-pulse bg-gradient-to-b from-slate-200 to-slate-100" />
@@ -262,12 +269,23 @@ export default function DesignPreview({
               key={mockupUrl}
               src={mockupUrl}
               alt="product mockup"
-              onLoad={() => setImgLoaded(true)}
+              onLoad={() => setLoadedUrl(mockupUrl)}
               className="absolute inset-0 w-full h-full object-contain"
               style={{ opacity: imgLoaded ? 1 : 0, transition: 'opacity 0.3s' }}
               draggable={false}
             />
-          </>
+            {/* Colour tint — multiply blends with image only (isolated) */}
+            {selectedColorHex && imgLoaded && (
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  backgroundColor: selectedColorHex,
+                  mixBlendMode:    'multiply',
+                  opacity:         0.55,
+                }}
+              />
+            )}
+          </div>
         ) : (
           /* No image for this colour/side */
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-slate-400">
@@ -281,101 +299,85 @@ export default function DesignPreview({
           </div>
         )}
 
-        {/* ── Print area (dashed outline, no label) ── */}
-        <div
-          className="absolute pointer-events-none"
-          style={{
-            left:   `${(pa.xPct - pa.wPct / 2) * 100}%`,
-            top:    `${(pa.yPct - pa.hPct / 2) * 100}%`,
-            width:  `${pa.wPct * 100}%`,
-            height: `${pa.hPct * 100}%`,
-            border: '1.5px dashed rgba(99,102,241,0.50)',
-            borderRadius: 4,
-          }}
-        />
-
-        {/* ── "YOUR LOGO" placeholder – draggable / resizable / rotatable ── */}
+        {/* ── Design placeholder – single clean box, draggable/resizable/rotatable ── */}
         {!hasDesign && containerW > 0 && mockupUrl && logoPlacement && (() => {
           const logoW = logoPlacement.wPct * containerW;
-          const fontSize = Math.max(8, logoW * 0.13);
+          const logoH = logoW; // square
+          const iconSize = Math.max(18, logoW * 0.22);
           return (
             <div
               onPointerDown={startLogoDrag}
               style={{
-                position:   'absolute',
-                left:       `${logoPlacement.x * 100}%`,
-                top:        `${logoPlacement.y * 100}%`,
-                width:      logoW,
-                transform:  `translate(-50%, -50%) rotate(${logoPlacement.rotation}deg)`,
-                cursor:     'grab',
-                touchAction:'none',
-                zIndex:     10,
-                display:    'flex',
+                position:    'absolute',
+                left:        `${logoPlacement.x * 100}%`,
+                top:         `${logoPlacement.y * 100}%`,
+                width:       logoW,
+                height:      logoH,
+                transform:   `translate(-50%, -50%) rotate(${logoPlacement.rotation}deg)`,
+                cursor:      'grab',
+                touchAction: 'none',
+                zIndex:      10,
+                userSelect:  'none',
+                display:     'flex',
                 flexDirection: 'column',
-                alignItems: 'center',
-                gap:        4,
-                opacity:    0.55,
-                userSelect: 'none',
+                alignItems:  'center',
+                justifyContent: 'center',
+                gap:         6,
+                background:  'rgba(99,102,241,0.07)',
+                border:      '1.5px dashed rgba(99,102,241,0.45)',
+                borderRadius: 8,
               }}
             >
-              {/* Aperture SVG */}
-              <svg viewBox="0 0 80 80" style={{ width: '60%', height: 'auto', display: 'block' }}>
-                <path d="M40 40 L40 10 A30 30 0 0 1 66 25 Z" fill="#f97316" />
-                <path d="M40 40 L66 25 A30 30 0 0 1 66 55 Z" fill="#eab308" />
-                <path d="M40 40 L66 55 A30 30 0 0 1 40 70 Z" fill="#22c55e" />
-                <path d="M40 40 L40 70 A30 30 0 0 1 14 55 Z" fill="#3b82f6" />
-                <path d="M40 40 L14 55 A30 30 0 0 1 14 25 Z" fill="#a855f7" />
-                <path d="M40 40 L14 25 A30 30 0 0 1 40 10 Z" fill="#ec4899" />
-                <circle cx="40" cy="40" r="13" fill="white" />
-                <circle cx="40" cy="40" r="9"  fill="#e0e7ff" />
+              {/* Image icon */}
+              <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none"
+                stroke="rgba(99,102,241,0.55)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+              >
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
               </svg>
 
-              {/* Label */}
-              <span style={{
-                fontFamily:    'system-ui, sans-serif',
-                fontWeight:    700,
-                fontSize,
-                letterSpacing: '0.12em',
-                color:         '#475569',
-                textTransform: 'uppercase',
-                whiteSpace:    'nowrap',
-              }}>
-                Your Logo
-              </span>
-
-              {/* Selection outline */}
-              <div style={{
-                position: 'absolute', inset: -6,
-                border: '1.5px dashed rgba(99,102,241,0.55)',
-                borderRadius: 4,
-                pointerEvents: 'none',
-              }} />
+              {/* Label – only when wide enough */}
+              {logoW > 80 && (
+                <span style={{
+                  fontFamily:  'system-ui, sans-serif',
+                  fontWeight:  600,
+                  fontSize:    Math.max(9, logoW * 0.09),
+                  color:       'rgba(99,102,241,0.65)',
+                  textAlign:   'center',
+                  letterSpacing: '0.02em',
+                  lineHeight:  1.3,
+                  userSelect:  'none',
+                }}>
+                  Your design
+                </span>
+              )}
 
               {/* Rotate handle */}
               <div
                 onPointerDown={startLogoRotate}
                 title="Drag to rotate"
                 style={{
-                  position: 'absolute', top: -30, left: '50%',
+                  position: 'absolute', top: -26, left: '50%',
                   transform: 'translateX(-50%)',
-                  width: 22, height: 22, borderRadius: '50%',
-                  background: '#6366f1', border: '2.5px solid white',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
+                  width: 20, height: 20, borderRadius: '50%',
+                  background: '#6366f1', border: '2px solid white',
+                  boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
                   cursor: 'grab', touchAction: 'none', zIndex: 20,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}
               >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
                   <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.3"/>
                 </svg>
               </div>
 
               {/* Corner resize handles */}
               {[
-                { top: -6,    left: -6,  cursor: 'nwse-resize' },
-                { top: -6,    right: -6, cursor: 'nesw-resize' },
-                { bottom: -6, left: -6,  cursor: 'nesw-resize' },
-                { bottom: -6, right: -6, cursor: 'nwse-resize' },
+                { top: -5,    left: -5,  cursor: 'nwse-resize' },
+                { top: -5,    right: -5, cursor: 'nesw-resize' },
+                { bottom: -5, left: -5,  cursor: 'nesw-resize' },
+                { bottom: -5, right: -5, cursor: 'nwse-resize' },
               ].map((pos, i) => (
                 <div
                   key={i}
@@ -383,9 +385,9 @@ export default function DesignPreview({
                   title="Drag to resize"
                   style={{
                     position: 'absolute',
-                    width: 12, height: 12, borderRadius: 3,
+                    width: 10, height: 10, borderRadius: 2,
                     background: 'white', border: '2px solid #6366f1',
-                    boxShadow: '0 1px 4px rgba(0,0,0,0.20)',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
                     cursor: pos.cursor, touchAction: 'none', zIndex: 20,
                     ...pos,
                   }}

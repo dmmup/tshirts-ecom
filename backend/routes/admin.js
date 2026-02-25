@@ -36,6 +36,113 @@ router.post('/verify', (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────
+// GET /api/admin/dashboard
+// Returns stats, 30-day daily revenue, top products, recent orders.
+// ─────────────────────────────────────────────────────────────
+router.get('/dashboard', requireAdmin, async (req, res) => {
+  try {
+    const PAID_STATUSES = ['paid', 'fulfilled', 'shipped'];
+
+    // Start of current calendar month
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+    // 30-day window for chart
+    const thirtyDaysAgo = new Date(now);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29);
+    thirtyDaysAgo.setHours(0, 0, 0, 0);
+
+    const [
+      { data: paidOrders },
+      { count: totalOrders },
+      { count: pendingCount },
+      { count: totalProducts },
+      { data: recentOrders },
+    ] = await Promise.all([
+      // All paid/fulfilled/shipped orders — used for revenue stats + chart
+      supabaseAdmin
+        .from('orders')
+        .select('id, created_at, subtotal_cents')
+        .in('status', PAID_STATUSES),
+      // Total orders (all statuses)
+      supabaseAdmin.from('orders').select('*', { count: 'exact', head: true }),
+      // Pending orders
+      supabaseAdmin.from('orders').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+      // Total products
+      supabaseAdmin.from('products').select('*', { count: 'exact', head: true }),
+      // Last 6 orders for recent-orders panel
+      supabaseAdmin
+        .from('orders')
+        .select('id, created_at, status, subtotal_cents, shipping_name, shipping_email')
+        .order('created_at', { ascending: false })
+        .limit(6),
+    ]);
+
+    // ── Revenue stats ──────────────────────────────────────────
+    const totalRevenue = (paidOrders || []).reduce((s, o) => s + (o.subtotal_cents || 0), 0);
+    const monthRevenue = (paidOrders || [])
+      .filter((o) => o.created_at >= startOfMonth)
+      .reduce((s, o) => s + (o.subtotal_cents || 0), 0);
+
+    // ── Build 30-day daily revenue array ──────────────────────
+    const dailyMap = {};
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(thirtyDaysAgo);
+      d.setDate(d.getDate() + i);
+      dailyMap[d.toISOString().slice(0, 10)] = 0;
+    }
+    for (const order of (paidOrders || [])) {
+      const key = order.created_at.slice(0, 10);
+      if (dailyMap[key] !== undefined) dailyMap[key] += order.subtotal_cents || 0;
+    }
+    const dailyRevenue = Object.entries(dailyMap).map(([date, revenue_cents]) => ({
+      date,
+      revenue_cents,
+    }));
+
+    // ── Top products (from all paid orders) ───────────────────
+    const paidOrderIds = (paidOrders || []).map((o) => o.id);
+    let topProducts = [];
+    if (paidOrderIds.length > 0) {
+      const { data: items } = await supabaseAdmin
+        .from('order_items')
+        .select('quantity, price_cents, product_variants(product_id, products(id, name, slug))')
+        .in('order_id', paidOrderIds);
+
+      const productMap = {};
+      for (const item of (items || [])) {
+        const product = item.product_variants?.products;
+        if (!product) continue;
+        if (!productMap[product.id]) {
+          productMap[product.id] = { id: product.id, name: product.name, slug: product.slug, units_sold: 0, revenue_cents: 0 };
+        }
+        productMap[product.id].units_sold += item.quantity;
+        productMap[product.id].revenue_cents += (item.price_cents || 0) * item.quantity;
+      }
+      topProducts = Object.values(productMap)
+        .sort((a, b) => b.units_sold - a.units_sold)
+        .slice(0, 5);
+    }
+
+    return res.json({
+      stats: {
+        total_revenue_cents: totalRevenue,
+        month_revenue_cents: monthRevenue,
+        total_orders: totalOrders || 0,
+        pending_orders: pendingCount || 0,
+        total_products: totalProducts || 0,
+      },
+      daily_revenue: dailyRevenue,
+      top_products: topProducts,
+      recent_orders: recentOrders || [],
+    });
+  } catch (err) {
+    console.error('[admin/dashboard GET]', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
 // GET /api/admin/orders?status=&page=1&limit=20
 // ─────────────────────────────────────────────────────────────
 router.get('/orders', requireAdmin, async (req, res) => {
@@ -253,7 +360,7 @@ router.get('/products', requireAdmin, async (req, res) => {
 // POST /api/admin/products
 // ─────────────────────────────────────────────────────────────
 router.post('/products', requireAdmin, async (req, res) => {
-  const { name, description, slug } = req.body;
+  const { name, description, slug, category_id } = req.body;
   if (!name) return res.status(400).json({ error: 'name is required' });
 
   const finalSlug = slug?.trim() || toSlug(name);
@@ -261,7 +368,7 @@ router.post('/products', requireAdmin, async (req, res) => {
   try {
     const { data, error } = await supabaseAdmin
       .from('products')
-      .insert({ name: name.trim(), description: description?.trim() || null, slug: finalSlug })
+      .insert({ name: name.trim(), description: description?.trim() || null, slug: finalSlug, category_id: category_id || null })
       .select()
       .single();
 
@@ -323,12 +430,13 @@ router.post('/products/upload/sign', requireAdmin, async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 router.patch('/products/:id', requireAdmin, async (req, res) => {
   const { id } = req.params;
-  const { name, description, slug } = req.body;
+  const { name, description, slug, category_id } = req.body;
 
   const updates = {};
   if (name !== undefined) updates.name = name.trim();
   if (description !== undefined) updates.description = description?.trim() || null;
   if (slug !== undefined) updates.slug = slug.trim();
+  if (category_id !== undefined) updates.category_id = category_id || null;
 
   if (Object.keys(updates).length === 0) {
     return res.status(400).json({ error: 'No fields to update' });
@@ -407,40 +515,93 @@ router.post('/products/:id/variants/bulk', requireAdmin, async (req, res) => {
     return res.status(400).json({ error: 'colors, sizes, and price_cents are required' });
   }
 
-  const rows = [];
-  for (const color of colors) {
-    for (const size of sizes) {
-      const colorAbbrev = color.name.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
-      const sku = sku_prefix
-        ? `${sku_prefix}-${colorAbbrev}-${size}`
-        : `${id.slice(0, 6).toUpperCase()}-${colorAbbrev}-${size}`;
+  try {
+    // Fetch existing variants for this product to avoid duplicates
+    const { data: existing } = await supabaseAdmin
+      .from('product_variants')
+      .select('color_name, size')
+      .eq('product_id', id);
 
-      rows.push({
-        product_id: id,
-        color_name: color.name,
-        color_hex: color.hex,
-        size,
-        price_cents: parseInt(price_cents),
-        sku,
-        stock: 100,
-      });
+    const existingSet = new Set(
+      (existing || []).map((v) => `${v.color_name}|${v.size}`)
+    );
+
+    const rows = [];
+    for (const color of colors) {
+      for (const size of sizes) {
+        // Skip combos that already exist
+        if (existingSet.has(`${color.name}|${size}`)) continue;
+
+        const colorAbbrev = color.name.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
+        const uniquePrefix = id.slice(-8).toUpperCase(); // last 8 chars of UUID for uniqueness
+        const sku = sku_prefix
+          ? `${sku_prefix}-${colorAbbrev}-${size}`
+          : `${uniquePrefix}-${colorAbbrev}-${size}`;
+
+        rows.push({
+          product_id: id,
+          color_name: color.name,
+          color_hex: color.hex || null,
+          size,
+          price_cents: parseInt(price_cents),
+          sku,
+          stock: null, // null = unlimited by default
+        });
+      }
+    }
+
+    if (rows.length === 0) {
+      return res.status(201).json({ inserted: 0, variants: [] });
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('product_variants')
+      .insert(rows)
+      .select();
+
+    if (error) {
+      console.error('[variants/bulk]', error);
+      return res.status(500).json({ error: `Could not create variants: ${error.message}` });
+    }
+
+    return res.status(201).json({ inserted: data?.length || 0, variants: data || [] });
+  } catch (err) {
+    console.error('[variants/bulk]', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// PATCH /api/admin/products/:id/variants/:variantId
+// Body: { stock }  (null = unlimited, 0 = OOS, n = qty)
+// ─────────────────────────────────────────────────────────────
+router.patch('/products/:id/variants/:variantId', requireAdmin, async (req, res) => {
+  const { variantId } = req.params;
+  const { stock } = req.body;
+
+  // stock must be null or a non-negative integer
+  if (stock !== null && stock !== undefined) {
+    const n = parseInt(stock, 10);
+    if (isNaN(n) || n < 0) {
+      return res.status(400).json({ error: 'stock must be null or a non-negative integer' });
     }
   }
 
   try {
     const { data, error } = await supabaseAdmin
       .from('product_variants')
-      .upsert(rows, { onConflict: 'sku', ignoreDuplicates: true })
-      .select();
+      .update({ stock: stock === '' || stock === undefined ? null : stock === null ? null : parseInt(stock, 10) })
+      .eq('id', variantId)
+      .select()
+      .single();
 
     if (error) {
-      console.error('[variants/bulk]', error);
-      return res.status(500).json({ error: 'Could not create variants' });
+      console.error('[variants PATCH]', error);
+      return res.status(500).json({ error: 'Could not update variant' });
     }
-
-    return res.status(201).json({ inserted: data?.length || 0, variants: data });
+    return res.json(data);
   } catch (err) {
-    console.error('[variants/bulk]', err);
+    console.error('[variants PATCH]', err);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -514,6 +675,152 @@ router.delete('/products/:id/images/:imageId', requireAdmin, async (req, res) =>
     return res.json({ success: true });
   } catch (err) {
     console.error('[images DELETE]', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ═════════════════════════════════════════════════════════════
+// Category management
+// ═════════════════════════════════════════════════════════════
+
+// ─────────────────────────────────────────────────────────────
+// POST /api/admin/categories/upload/sign
+// Body: { filename, contentType }
+// Returns: { signedUrl, publicUrl }
+// ─────────────────────────────────────────────────────────────
+router.post('/categories/upload/sign', requireAdmin, async (req, res) => {
+  const { filename, contentType } = req.body;
+
+  if (!filename || !contentType) {
+    return res.status(400).json({ error: 'filename and contentType are required' });
+  }
+
+  const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+  if (!ALLOWED_TYPES.includes(contentType)) {
+    return res.status(400).json({ error: 'File type not allowed. Use PNG, JPEG, WebP or GIF.' });
+  }
+
+  const sanitizedFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const storagePath = `categories/${Date.now()}_${sanitizedFilename}`;
+
+  try {
+    const { data, error } = await supabaseAdmin.storage
+      .from('product-images')
+      .createSignedUploadUrl(storagePath);
+
+    if (error) {
+      console.error('[categories/upload/sign]', error);
+      return res.status(500).json({ error: 'Could not create signed URL' });
+    }
+
+    const publicUrl = `${process.env.SUPABASE_URL}/storage/v1/object/public/product-images/${storagePath}`;
+    return res.json({ signedUrl: data.signedUrl, publicUrl });
+  } catch (err) {
+    console.error('[categories/upload/sign]', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// GET /api/admin/categories
+// ─────────────────────────────────────────────────────────────
+router.get('/categories', requireAdmin, async (req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('categories')
+      .select('id, slug, name, image_url, sort_order, created_at')
+      .order('sort_order', { ascending: true });
+
+    if (error) return res.status(500).json({ error: 'Could not fetch categories' });
+    return res.json(data || []);
+  } catch (err) {
+    console.error('[admin/categories GET]', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// POST /api/admin/categories
+// Body: { name, slug?, image_url?, sort_order? }
+// ─────────────────────────────────────────────────────────────
+router.post('/categories', requireAdmin, async (req, res) => {
+  const { name, slug, image_url, sort_order } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'name is required' });
+
+  const finalSlug = slug?.trim() || name.trim().toLowerCase().replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-');
+
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('categories')
+      .insert({
+        name: name.trim(),
+        slug: finalSlug,
+        image_url: image_url?.trim() || null,
+        sort_order: sort_order !== undefined ? parseInt(sort_order) : 0,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === '23505') return res.status(409).json({ error: 'A category with this slug already exists' });
+      return res.status(500).json({ error: 'Could not create category' });
+    }
+    return res.status(201).json(data);
+  } catch (err) {
+    console.error('[admin/categories POST]', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// PATCH /api/admin/categories/:id
+// Body: { name?, slug?, image_url?, sort_order? }
+// ─────────────────────────────────────────────────────────────
+router.patch('/categories/:id', requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  const { name, slug, image_url, sort_order } = req.body;
+
+  const updates = {};
+  if (name !== undefined) updates.name = name.trim();
+  if (slug !== undefined) updates.slug = slug.trim();
+  if (image_url !== undefined) updates.image_url = image_url?.trim() || null;
+  if (sort_order !== undefined) updates.sort_order = parseInt(sort_order);
+
+  if (Object.keys(updates).length === 0) {
+    return res.status(400).json({ error: 'No fields to update' });
+  }
+
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('categories')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === '23505') return res.status(409).json({ error: 'Slug already in use' });
+      return res.status(500).json({ error: 'Could not update category' });
+    }
+    return res.json(data);
+  } catch (err) {
+    console.error('[admin/categories PATCH]', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// DELETE /api/admin/categories/:id
+// Products with this category will have category_id set to NULL
+// ─────────────────────────────────────────────────────────────
+router.delete('/categories/:id', requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { error } = await supabaseAdmin.from('categories').delete().eq('id', id);
+    if (error) return res.status(500).json({ error: 'Could not delete category' });
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('[admin/categories DELETE]', err);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

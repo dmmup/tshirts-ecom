@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { fetchCart, updateCartItem, removeCartItem } from '../api/products';
+import { useAuth } from '../context/AuthContext';
 
 // ── Helpers ───────────────────────────────────────────────────
 function getAnonymousId() {
@@ -248,6 +249,7 @@ function SkeletonCard() {
 // ── Page ──────────────────────────────────────────────────────
 export default function CartPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -302,12 +304,20 @@ export default function CartPage() {
           <Link to="/" className="text-xl font-bold text-slate-900 tracking-tight">
             Print<span className="text-indigo-600">Shop</span>
           </Link>
-          <Link
-            to="/products/gildan-budget-unisex-tshirt"
-            className="text-sm text-slate-500 hover:text-indigo-600 transition-colors font-medium"
-          >
-            ← Continue shopping
-          </Link>
+          <div className="flex items-center gap-5 text-sm font-medium text-slate-500">
+            {user ? (
+              <Link to="/account" className="hover:text-indigo-600 transition-colors hidden sm:block">
+                My Account
+              </Link>
+            ) : (
+              <Link to="/login" className="hover:text-indigo-600 transition-colors hidden sm:block">
+                Sign In
+              </Link>
+            )}
+            <Link to="/products" className="hover:text-indigo-600 transition-colors">
+              ← Continue shopping
+            </Link>
+          </div>
         </div>
       </header>
 

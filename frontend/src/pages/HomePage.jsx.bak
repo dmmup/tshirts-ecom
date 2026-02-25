@@ -354,18 +354,6 @@ export default function HomePage() {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-
-      {/* Slim announcement bar */}
-      <div className="bg-indigo-600 py-2.5 px-4 text-center text-sm font-medium text-indigo-100">
-        Custom T-shirts · Printed &amp; shipped in 48h · No minimum order ·{' '}
-        <Link
-          to="/products/gildan-budget-unisex-tshirt"
-          className="text-white font-bold underline underline-offset-2 hover:text-indigo-200 transition-colors"
-        >
-          Start designing →
-        </Link>
-      </div>
-
       <main className="flex-1">
         <CatalogView
           products={products}

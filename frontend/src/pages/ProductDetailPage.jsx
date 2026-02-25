@@ -8,6 +8,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { fetchProduct, uploadDesign, addToCart, fetchCart, removeCartItem, updateCartItem } from '../api/products';
 import DesignPreview, { makeDefaultPlacement } from '../components/DesignPreview';
+import { useAuth } from '../context/AuthContext';
 
 // ── Helpers ──────────────────────────────────────────────────
 
@@ -72,101 +73,97 @@ function DesignPicker({ library, side, sideDesigns, onAddFile, onApply, onRemove
     onAddFile(f);
   };
 
-  const activeUrl = sideDesigns[side]?.localDesignUrl;
-
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold text-slate-700">Your Designs</span>
-        <span className="text-xs text-slate-400">{library.length}/{MAX_DESIGNS} uploaded</span>
-      </div>
-
-      {/* Design library grid */}
-      <div className="flex flex-wrap gap-2">
-        {library.map((design) => {
-          const isActiveFront = sideDesigns.front?.localDesignUrl === design.localUrl;
-          const isActiveBack  = sideDesigns.back?.localDesignUrl  === design.localUrl;
-          const isActiveSide  = side === 'front' ? isActiveFront : isActiveBack;
-          return (
-            <div key={design.id} className="relative group">
-              <button
-                onClick={() => onApply(design)}
-                title={design.file.name}
-                className={`w-16 h-16 rounded-xl border-2 overflow-hidden bg-slate-50 flex items-center justify-center transition-all ${
-                  isActiveSide ? 'border-indigo-500 shadow-md shadow-indigo-100' : 'border-slate-200 hover:border-indigo-300'
-                }`}
-              >
-                <img src={design.localUrl} alt={design.file.name} className="w-full h-full object-contain p-1" />
-              </button>
-
-              {/* Side badges */}
-              <div className="absolute -bottom-1 left-0 right-0 flex justify-center gap-0.5">
-                {isActiveFront && (
-                  <span className="text-[9px] font-bold bg-indigo-600 text-white px-1 rounded">F</span>
-                )}
-                {isActiveBack && (
-                  <span className="text-[9px] font-bold bg-slate-700 text-white px-1 rounded">B</span>
-                )}
-              </div>
-
-              {/* Remove button */}
-              <button
-                onClick={() => onRemove(design.id)}
-                className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-white border border-slate-200 rounded-full text-slate-400 hover:text-red-500 hover:border-red-300 transition-colors flex items-center justify-center text-xs shadow-sm opacity-0 group-hover:opacity-100"
-              >✕</button>
-            </div>
-          );
-        })}
-
-        {/* Add slot */}
-        {library.length < MAX_DESIGNS && (
-          <button
-            onClick={() => inputRef.current?.click()}
-            className="w-16 h-16 rounded-xl border-2 border-dashed border-slate-300 hover:border-indigo-400 hover:bg-indigo-50 transition-all flex flex-col items-center justify-center gap-0.5 text-slate-400 hover:text-indigo-500"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/>
-            </svg>
-            <span className="text-[10px] font-semibold">Add</span>
-          </button>
+        <span className="text-sm font-semibold text-slate-700">Your Design</span>
+        {library.length > 0 && (
+          <span className="text-xs text-slate-400">{library.length}/{MAX_DESIGNS} uploaded</span>
         )}
       </div>
+
+      {/* Empty state: prominent upload zone */}
+      {library.length === 0 ? (
+        <button
+          onClick={() => inputRef.current?.click()}
+          className="w-full py-8 border-2 border-dashed border-slate-300 hover:border-indigo-400 hover:bg-indigo-50/50 rounded-2xl transition-all flex flex-col items-center gap-2.5 text-slate-400 hover:text-indigo-500 group"
+        >
+          <div className="w-12 h-12 rounded-xl bg-slate-100 group-hover:bg-indigo-100 flex items-center justify-center transition-colors">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+            </svg>
+          </div>
+          <div className="text-center">
+            <p className="text-sm font-semibold">Upload your design</p>
+            <p className="text-xs mt-0.5 opacity-75">PNG or SVG · max {MAX_DESIGN_MB} MB</p>
+          </div>
+        </button>
+      ) : (
+        /* Library thumbnails + add slot */
+        <div className="flex flex-wrap gap-2 items-center">
+          {library.map((design) => {
+            const isActiveFront = sideDesigns.front?.localDesignUrl === design.localUrl;
+            const isActiveBack  = sideDesigns.back?.localDesignUrl  === design.localUrl;
+            const isActiveSide  = side === 'front' ? isActiveFront : isActiveBack;
+            return (
+              <div key={design.id} className="relative group">
+                <button
+                  onClick={() => onApply(design)}
+                  title={design.file.name}
+                  className={`w-16 h-16 rounded-xl border-2 overflow-hidden bg-slate-50 flex items-center justify-center transition-all ${
+                    isActiveSide ? 'border-indigo-500 shadow-md shadow-indigo-100' : 'border-slate-200 hover:border-indigo-300'
+                  }`}
+                >
+                  <img src={design.localUrl} alt={design.file.name} className="w-full h-full object-contain p-1" />
+                </button>
+                <div className="absolute -bottom-1 left-0 right-0 flex justify-center gap-0.5">
+                  {isActiveFront && <span className="text-[9px] font-bold bg-indigo-600 text-white px-1 rounded">F</span>}
+                  {isActiveBack  && <span className="text-[9px] font-bold bg-slate-700 text-white px-1 rounded">B</span>}
+                </div>
+                <button
+                  onClick={() => onRemove(design.id)}
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-white border border-slate-200 rounded-full text-slate-400 hover:text-red-500 hover:border-red-300 transition-colors flex items-center justify-center text-xs shadow-sm opacity-0 group-hover:opacity-100"
+                >✕</button>
+              </div>
+            );
+          })}
+          {library.length < MAX_DESIGNS && (
+            <button
+              onClick={() => inputRef.current?.click()}
+              className="w-16 h-16 rounded-xl border-2 border-dashed border-slate-300 hover:border-indigo-400 hover:bg-indigo-50 transition-all flex flex-col items-center justify-center gap-0.5 text-slate-400 hover:text-indigo-500"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/>
+              </svg>
+              <span className="text-[10px] font-semibold">Add</span>
+            </button>
+          )}
+        </div>
+      )}
 
       <input ref={inputRef} type="file" className="hidden" accept=".png,.svg" onChange={handleChange} />
 
       {/* Per-side status */}
-      <div className="flex gap-3 text-xs">
+      <div className="flex gap-2 text-xs">
         {['front', 'back'].map(s => (
-          <div key={s} className={`flex items-center gap-1 px-2 py-1 rounded-lg ${
-            side === s ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-slate-500'
+          <div key={s} className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border ${
+            side === s ? 'border-indigo-200 bg-indigo-50 text-indigo-700 font-semibold' : 'border-transparent text-slate-400'
           }`}>
             <span className="capitalize">{s}:</span>
-            <span className={sideDesigns[s]?.localDesignUrl ? 'text-emerald-600' : 'text-slate-400'}>
-              {sideDesigns[s]?.localDesignUrl ? '✓ design set' : 'no design'}
+            <span className={sideDesigns[s]?.localDesignUrl ? 'text-emerald-600 font-semibold' : ''}>
+              {sideDesigns[s]?.localDesignUrl ? '✓ set' : 'none'}
             </span>
           </div>
         ))}
       </div>
 
       {error && <p className="text-xs text-red-500">{error}</p>}
-
-      {!activeUrl && library.length === 0 && (
-        <button
-          onClick={() => inputRef.current?.click()}
-          className="w-full py-3 px-4 border-2 border-dashed border-slate-300 rounded-xl text-sm text-slate-500 hover:border-indigo-400 hover:text-indigo-600 transition-all flex items-center justify-center gap-2"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-          </svg>
-          Upload design (PNG / SVG · max {MAX_DESIGN_MB} MB)
-        </button>
-      )}
     </div>
   );
 }
 
 // ── Color Swatches ────────────────────────────────────────────
-function ColorSwatches({ colors, selected, onChange }) {
+function ColorSwatches({ colors, selected, onChange, outOfStockColors = [] }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-2.5">
@@ -174,25 +171,34 @@ function ColorSwatches({ colors, selected, onChange }) {
         <span className="text-sm text-slate-500">{selected}</span>
       </div>
       <div className="flex flex-wrap gap-2.5">
-        {colors.map(({ name, hex }) => (
-          <button
-            key={name}
-            title={name}
-            onClick={() => onChange(name)}
-            className={`relative w-8 h-8 rounded-full border-2 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 ${
-              selected === name
-                ? 'border-indigo-500 scale-110 shadow-md'
-                : 'border-slate-300 hover:border-slate-500 hover:scale-105'
-            }`}
-            style={{ backgroundColor: hex }}
-          >
-            {selected === name && (
-              <span className="absolute inset-0 flex items-center justify-center">
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: parseInt(hex.slice(1), 16) > 0xaaaaaa ? '#333' : '#fff' }} />
-              </span>
-            )}
-          </button>
-        ))}
+        {colors.map(({ name, hex }) => {
+          const isOOS = outOfStockColors.includes(name);
+          return (
+            <button
+              key={name}
+              title={isOOS ? `${name} — Out of stock` : name}
+              onClick={() => !isOOS && onChange(name)}
+              disabled={isOOS}
+              className={`relative w-8 h-8 rounded-full border-2 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 ${
+                isOOS
+                  ? 'border-slate-200 opacity-40 cursor-not-allowed'
+                  : selected === name
+                  ? 'border-indigo-500 scale-110 shadow-md'
+                  : 'border-slate-300 hover:border-slate-500 hover:scale-105'
+              }`}
+              style={{ backgroundColor: hex }}
+            >
+              {selected === name && !isOOS && (
+                <span className="absolute inset-0 flex items-center justify-center">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: parseInt(hex.slice(1), 16) > 0xaaaaaa ? '#333' : '#fff' }} />
+                </span>
+              )}
+              {isOOS && (
+                <span className="absolute inset-0 flex items-center justify-center text-slate-500 text-[10px] font-bold">✕</span>
+              )}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -200,26 +206,24 @@ function ColorSwatches({ colors, selected, onChange }) {
 
 // ── Backside Selector ─────────────────────────────────────────
 function BacksideSelector({ value, onChange }) {
-  const options = [
-    { id: 'blank', label: 'Blank', description: 'No print on back' },
-    { id: 'color', label: 'Color', description: 'Print on back too' },
-  ];
   return (
     <div>
-      <span className="text-sm font-semibold text-slate-700 block mb-2.5">Backside</span>
-      <div className="flex gap-3">
-        {options.map(opt => (
+      <span className="text-sm font-semibold text-slate-700 block mb-2">Backside</span>
+      <div className="flex gap-2">
+        {[
+          { id: 'blank', label: 'Blank back' },
+          { id: 'color', label: 'Print on back' },
+        ].map(opt => (
           <button
             key={opt.id}
             onClick={() => onChange(opt.id)}
-            className={`flex-1 py-2.5 px-4 rounded-xl border-2 text-sm font-medium transition-all text-center ${
+            className={`px-4 py-2 rounded-xl border-2 text-sm font-semibold transition-all ${
               value === opt.id
                 ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                : 'border-slate-200 text-slate-600 hover:border-slate-400'
+                : 'border-slate-200 text-slate-600 hover:border-slate-300'
             }`}
           >
-            <div className="font-semibold">{opt.label}</div>
-            <div className="text-xs font-normal opacity-70 mt-0.5">{opt.description}</div>
+            {opt.label}
           </button>
         ))}
       </div>
@@ -228,39 +232,37 @@ function BacksideSelector({ value, onChange }) {
 }
 
 // ── Decoration Technology Selector ───────────────────────────
+const DECORATION_DESCRIPTIONS = {
+  dtg:        'Photorealistic full-color prints. Best for detailed artwork.',
+  embroidery: 'Premium stitched look. Ideal for logos & text.',
+  screen:     'Vibrant, durable. Great for simple designs & bulk orders.',
+};
+
 function DecorationSelector({ value, onChange }) {
   const options = [
-    { id: 'dtg',        label: 'Direct-to-Garment', description: 'Photorealistic prints. Best for complex artwork.', icon: '🎨' },
-    { id: 'embroidery', label: 'Embroidery',         description: 'Premium stitched look. Ideal for logos.',          icon: '🧵' },
-    { id: 'screen',     label: 'Screen Print',       description: 'Vibrant, durable. Great for bulk orders.',         icon: '🖨️' },
+    { id: 'dtg',        label: 'DTG' },
+    { id: 'embroidery', label: 'Embroidery' },
+    { id: 'screen',     label: 'Screen' },
   ];
   return (
     <div>
-      <span className="text-sm font-semibold text-slate-700 block mb-2.5">Decoration Technology</span>
-      <div className="flex flex-col gap-2">
+      <span className="text-sm font-semibold text-slate-700 block mb-2">Print Method</span>
+      <div className="flex gap-2">
         {options.map(opt => (
           <button
             key={opt.id}
             onClick={() => onChange(opt.id)}
-            className={`flex items-start gap-3 p-3.5 rounded-xl border-2 text-left transition-all ${
-              value === opt.id ? 'border-indigo-500 bg-indigo-50' : 'border-slate-200 hover:border-slate-300 bg-white'
+            className={`flex-1 py-2 px-3 rounded-xl border-2 text-xs font-semibold transition-all ${
+              value === opt.id
+                ? 'border-indigo-500 bg-indigo-600 text-white shadow-sm shadow-indigo-200'
+                : 'border-slate-200 text-slate-600 hover:border-indigo-300 bg-white'
             }`}
           >
-            <span className="text-xl mt-0.5">{opt.icon}</span>
-            <div>
-              <div className={`text-sm font-semibold ${value === opt.id ? 'text-indigo-700' : 'text-slate-700'}`}>{opt.label}</div>
-              <div className="text-xs text-slate-500 mt-0.5">{opt.description}</div>
-            </div>
-            {value === opt.id && (
-              <span className="ml-auto mt-0.5 text-indigo-500">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
-                </svg>
-              </span>
-            )}
+            {opt.label}
           </button>
         ))}
       </div>
+      <p className="text-xs text-slate-500 mt-2">{DECORATION_DESCRIPTIONS[value]}</p>
     </div>
   );
 }
@@ -301,20 +303,17 @@ function SizeSelector({ sizes, selected, onChange, unavailable = [] }) {
 
 // ── Delivery Info Block ───────────────────────────────────────
 function DeliveryBlock() {
-  const options = [
-    { icon: '🚚', label: 'Standard Delivery', detail: '5–7 business days · Free over $50' },
-    { icon: '⚡', label: 'Express Delivery',   detail: '2–3 business days · $9.99' },
-    { icon: '🏪', label: 'Pickup Available',   detail: 'Ready in 48h at select locations' },
-  ];
   return (
-    <div className="bg-slate-50 rounded-xl p-4 space-y-3 border border-slate-200">
-      {options.map(opt => (
-        <div key={opt.label} className="flex items-start gap-3">
-          <span className="text-lg mt-0.5">{opt.icon}</span>
-          <div>
-            <p className="text-sm font-semibold text-slate-700">{opt.label}</p>
-            <p className="text-xs text-slate-500">{opt.detail}</p>
-          </div>
+    <div className="rounded-xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
+      {[
+        { icon: '🚚', label: 'Standard · 5–7 days', sub: 'Free over $50' },
+        { icon: '⚡', label: 'Express · 2–3 days',  sub: '$9.99' },
+        { icon: '🏪', label: 'Pickup · Ready in 48h', sub: 'Select locations' },
+      ].map(opt => (
+        <div key={opt.label} className="flex items-center gap-3 px-4 py-2.5 bg-white">
+          <span className="text-base">{opt.icon}</span>
+          <span className="text-sm text-slate-700 font-medium flex-1">{opt.label}</span>
+          <span className="text-xs text-slate-400">{opt.sub}</span>
         </div>
       ))}
     </div>
@@ -323,23 +322,13 @@ function DeliveryBlock() {
 
 // ── Breadcrumb ────────────────────────────────────────────────
 function Breadcrumb({ productName }) {
-  const crumbs = [
-    { label: 'Home', to: '/' },
-    { label: 'Clothing & Bags', to: '/categories/clothing-bags' },
-    { label: 'Custom T-shirts', to: '/categories/custom-tshirts' },
-    { label: productName },
-  ];
   return (
-    <nav className="flex items-center gap-1.5 text-sm text-slate-500 flex-wrap">
-      {crumbs.map((c, i) => (
-        <span key={i} className="flex items-center gap-1.5">
-          {i > 0 && <span className="text-slate-300">/</span>}
-          {c.to
-            ? <Link to={c.to} className="hover:text-indigo-600 transition-colors">{c.label}</Link>
-            : <span className="text-slate-800 font-medium truncate max-w-[180px]">{c.label}</span>
-          }
-        </span>
-      ))}
+    <nav className="flex items-center gap-1.5 text-sm text-slate-400">
+      <Link to="/" className="hover:text-indigo-600 transition-colors">Home</Link>
+      <span>/</span>
+      <Link to="/products" className="hover:text-indigo-600 transition-colors">Products</Link>
+      <span>/</span>
+      <span className="text-slate-700 font-medium truncate max-w-[220px]">{productName}</span>
     </nav>
   );
 }
@@ -570,6 +559,7 @@ function CartPreviewPanel({ items, loading, onRemove, onQtyChange }) {
 // ── Main PDP ─────────────────────────────────────────────────
 export default function ProductDetailPage() {
   const { slug } = useParams();
+  const { user } = useAuth();
 
   // Product data
   const [loading, setLoading]   = useState(true);
@@ -684,8 +674,12 @@ export default function ProductDetailPage() {
     return min === max ? formatPrice(min) : `${formatPrice(min)} – ${formatPrice(max)}`;
   })();
 
-  // Images for the selected colour (strict match)
-  const colorImages = images.filter(img => img.color_name === selectedColor);
+  // Images for the selected colour.
+  // Prefer colour-specific images; fall back to "All colours" (color_name = null) images.
+  const colorSpecificImages = images.filter(img => img.color_name === selectedColor);
+  const colorImages = colorSpecificImages.length > 0
+    ? colorSpecificImages
+    : images.filter(img => !img.color_name);
 
   // Available sides derived from colorImages
   const availableSides = [...new Set(
@@ -695,11 +689,42 @@ export default function ProductDetailPage() {
   // Exact match on current side; null if not found
   const currentMockup = colorImages.find(img => img.angle === side) || null;
 
+  // Tint hex: when there is no colour-specific mockup for the current side,
+  // pass the selected colour's hex so DesignPreview applies a multiply overlay
+  // to simulate that shirt colour from the fallback (white/neutral) mockup.
+  const hasMockupForSide = colorSpecificImages.some(img => img.angle === side);
+  const tintHex = hasMockupForSide
+    ? null
+    : (uniqueColors.find(c => c.name === selectedColor)?.hex ?? null);
+
+  // OOS derived data
+  // Sizes of selected color that are explicitly out of stock (stock === 0)
+  const oosForColor = selectedColor
+    ? variants
+        .filter(v => v.color_name === selectedColor && v.stock === 0)
+        .map(v => v.size)
+    : [];
+
+  // Colors where every variant is OOS
+  const oosColors = uniqueColors
+    .filter(c =>
+      variants.filter(v => v.color_name === c.name).length > 0 &&
+      variants.filter(v => v.color_name === c.name).every(v => v.stock === 0)
+    )
+    .map(c => c.name);
+
+  const isOOS = selectedVariant?.stock === 0;
+
   // Handlers
   const handleColorChange = (color) => {
     setSelectedColor(color);
     const sizes = sortSizes([...new Set(variants.filter(v => v.color_name === color).map(v => v.size))]);
-    setSelectedSize(sizes[0] || null);
+    // Prefer an in-stock size; fall back to first available
+    const firstAvailable = sizes.find(s => {
+      const v = variants.find(vv => vv.color_name === color && vv.size === s);
+      return !v || v.stock !== 0;
+    });
+    setSelectedSize(firstAvailable || sizes[0] || null);
     setSide('front'); // reset side so we never stay stuck on 'back' for a colour that only has 'front'
   };
 
@@ -809,6 +834,8 @@ export default function ProductDetailPage() {
 
       await addToCart({ variantId: selectedVariant.id, quantity: 1, config, anonymousId: anonId });
       await loadCart();
+      setMiniCartOpen(true);
+      setToast({ message: 'Added to cart!', type: 'success' });
     } catch (err) {
       setToast({ message: err.message || 'Failed to add to cart', type: 'error' });
     } finally {
@@ -847,6 +874,7 @@ export default function ProductDetailPage() {
   // Add-to-cart button label
   const hasPendingFile = sideDesigns.front.pendingFile || sideDesigns.back.pendingFile;
   const cartBtnLabel = (() => {
+    if (isOOS) return 'Out of Stock';
     if (!addingToCart) return 'Add to Cart';
     if (hasPendingFile && uploadProgress < 100) return `Uploading… ${uploadProgress}%`;
     return (
@@ -858,23 +886,34 @@ export default function ProductDetailPage() {
   })();
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-slate-50">
       {/* ── Top nav ──────────────────────────────────────────── */}
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-sm border-b border-slate-100">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <Link to="/" className="text-xl font-bold text-slate-900 tracking-tight">
             Print<span className="text-indigo-600">Shop</span>
           </Link>
-          <button
-            onClick={openMiniCart}
-            className="p-2 text-slate-500 hover:text-indigo-600 transition-colors"
-            title="Cart"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-                d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-3">
+            {user ? (
+              <Link to="/account" className="text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors hidden sm:block">
+                My Account
+              </Link>
+            ) : (
+              <Link to="/login" className="text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors hidden sm:block">
+                Sign In
+              </Link>
+            )}
+            <button
+              onClick={openMiniCart}
+              className="p-2 text-slate-500 hover:text-indigo-600 transition-colors"
+              title="Cart"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                  d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+              </svg>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -885,74 +924,107 @@ export default function ProductDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
 
           {/* ── Left: Live preview ─────────────────────────── */}
-          <div className="lg:sticky lg:top-6 lg:self-start space-y-2">
-            <DesignPreview
-              mockupUrl={currentMockup?.url}
-              side={side}
-              onSideChange={setSide}
-              availableSides={availableSides}
-              localDesignUrl={sideDesigns[side].localDesignUrl}
-              placement={sideDesigns[side].placement}
-              onPlacementChange={handlePlacementChange}
-            />
-
+          <div className="lg:sticky lg:top-6 lg:self-start">
+            <div className="bg-white rounded-2xl shadow-sm p-4 space-y-2">
+              <DesignPreview
+                mockupUrl={currentMockup?.url}
+                selectedColorHex={tintHex}
+                side={side}
+                onSideChange={setSide}
+                availableSides={availableSides}
+                localDesignUrl={sideDesigns[side].localDesignUrl}
+                placement={sideDesigns[side].placement}
+                onPlacementChange={handlePlacementChange}
+              />
+            </div>
           </div>
 
           {/* ── Right: Product info + options ──────────────── */}
-          <div className="space-y-6">
+          <div className="space-y-5">
 
+            {/* Name + rating + price */}
             <div className="space-y-2">
               <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 leading-tight">{product.name}</h1>
               <StarRating rating={product.base_rating} count={product.rating_count} />
+              <div className="flex items-baseline gap-3 pt-1">
+                <span className="text-3xl font-bold text-slate-900">
+                  {selectedVariant ? formatPrice(selectedVariant.price_cents) : priceRange || '—'}
+                </span>
+                {variants.length > 0 && !selectedVariant && (
+                  <span className="text-sm text-slate-400">Select size for exact price</span>
+                )}
+              </div>
             </div>
 
-            <p className="text-slate-600 text-sm leading-relaxed">{product.description}</p>
+            <p className="text-slate-500 text-sm leading-relaxed">{product.description}</p>
 
-            <div className="flex items-baseline gap-3">
-              <span className="text-3xl font-bold text-slate-900">
-                {selectedVariant ? formatPrice(selectedVariant.price_cents) : priceRange}
-              </span>
-              {!selectedVariant && <span className="text-sm text-slate-400">Select size for exact price</span>}
-            </div>
+            {variants.length === 0 ? (
+              /* ── No variants yet ────────────────────────────── */
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-center space-y-2">
+                <p className="text-sm font-semibold text-amber-700">No options available yet</p>
+                <p className="text-xs text-amber-600">
+                  This product isn't ready for purchase. Please check back soon.
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* Colour + Size */}
+                <div className="bg-white rounded-2xl p-4 space-y-4 shadow-sm">
+                  <ColorSwatches colors={uniqueColors} selected={selectedColor} onChange={handleColorChange} outOfStockColors={oosColors} />
+                  <SizeSelector sizes={sizesForColor} selected={selectedSize} onChange={setSelectedSize} unavailable={oosForColor} />
+                </div>
 
-            <hr className="border-slate-100" />
-            <DeliveryBlock />
-            <hr className="border-slate-100" />
+                {/* Design upload */}
+                <div className="bg-white rounded-2xl p-4 shadow-sm">
+                  <DesignPicker
+                    library={designLibrary}
+                    side={side}
+                    sideDesigns={sideDesigns}
+                    onAddFile={handleAddFile}
+                    onApply={handleApplyDesign}
+                    onRemove={handleRemoveDesign}
+                  />
+                </div>
 
-            <ColorSwatches colors={uniqueColors} selected={selectedColor} onChange={handleColorChange} />
-            <BacksideSelector value={backside} onChange={setBackside} />
-            <DecorationSelector value={decoration} onChange={setDecoration} />
-            <SizeSelector sizes={sizesForColor} selected={selectedSize} onChange={setSelectedSize} />
+                {/* Print options */}
+                <div className="bg-white rounded-2xl p-4 space-y-4 shadow-sm">
+                  <BacksideSelector value={backside} onChange={setBackside} />
+                  <DecorationSelector value={decoration} onChange={setDecoration} />
+                </div>
 
-            <hr className="border-slate-100" />
+                {/* Delivery */}
+                <DeliveryBlock />
 
-            {/* Design library – up to 4 designs, per-side independent */}
-            <DesignPicker
-              library={designLibrary}
-              side={side}
-              sideDesigns={sideDesigns}
-              onAddFile={handleAddFile}
-              onApply={handleApplyDesign}
-              onRemove={handleRemoveDesign}
-            />
-
-            {/* CTA */}
-            <div className="space-y-3 pt-1">
-              <button
-                onClick={handleAddToCart}
-                disabled={addingToCart || !selectedVariant}
-                className="w-full py-4 px-6 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-2xl transition-all shadow-md shadow-indigo-100 active:scale-[0.98] text-base"
-              >
-                {cartBtnLabel}
-              </button>
-              <button className="w-full py-3.5 px-6 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-2xl transition-all active:scale-[0.98] text-sm">
-                Generate Templates
-              </button>
-            </div>
+                {/* CTA */}
+                <button
+                  onClick={handleAddToCart}
+                  disabled={addingToCart || !selectedVariant || isOOS}
+                  className={`w-full py-4 px-6 font-semibold rounded-2xl transition-all active:scale-[0.98] text-base ${
+                    isOOS
+                      ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                      : 'bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white shadow-md shadow-indigo-100'
+                  }`}
+                >
+                  {cartBtnLabel}
+                </button>
+              </>
+            )}
 
             {selectedVariant && (
-              <p className="text-xs text-slate-400 text-center">
-                SKU: {selectedVariant.sku} · {selectedVariant.stock > 0 ? `${selectedVariant.stock} in stock` : 'Out of stock'}
+              <p className="text-xs text-center">
+                <span className="text-slate-400">SKU: {selectedVariant.sku}</span>
+                {selectedVariant.stock !== null && (
+                  <>
+                    {' · '}
+                    {selectedVariant.stock === 0 ? (
+                      <span className="text-red-500 font-medium">Out of stock</span>
+                    ) : selectedVariant.stock <= 5 ? (
+                      <span className="text-amber-600 font-medium">Only {selectedVariant.stock} left</span>
+                    ) : (
+                      <span className="text-green-600">{selectedVariant.stock} in stock</span>
+                    )}
+                  </>
+                )}
               </p>
             )}
 

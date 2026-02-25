@@ -17,6 +17,12 @@ export function AdminTopBar({ onLogout }) {
           </span>
           <nav className="hidden sm:flex items-center gap-1 ml-2">
             <Link
+              to="/admin/dashboard"
+              className="px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+            >
+              Dashboard
+            </Link>
+            <Link
               to="/admin/orders"
               className="px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
             >
@@ -27,6 +33,12 @@ export function AdminTopBar({ onLogout }) {
               className="px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
             >
               Products
+            </Link>
+            <Link
+              to="/admin/categories"
+              className="px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+            >
+              Categories
             </Link>
           </nav>
         </div>

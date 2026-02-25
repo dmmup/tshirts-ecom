@@ -12,7 +12,7 @@ export default function AdminLoginPage() {
   // Already authenticated → skip to dashboard
   useEffect(() => {
     if (sessionStorage.getItem('admin_token')) {
-      navigate('/admin/orders', { replace: true });
+      navigate('/admin/dashboard', { replace: true });
     }
   }, [navigate]);
 
@@ -25,7 +25,7 @@ export default function AdminLoginPage() {
     try {
       await verifyAdmin(secret.trim());
       sessionStorage.setItem('admin_token', secret.trim());
-      navigate('/admin/orders', { replace: true });
+      navigate('/admin/dashboard', { replace: true });
     } catch (err) {
       setError('Incorrect password. Try again.');
       setLoading(false);

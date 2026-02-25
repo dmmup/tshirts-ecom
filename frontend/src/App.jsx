@@ -10,6 +10,11 @@ import AdminOrderDetailPage from './pages/AdminOrderDetailPage';
 import ProductCatalogPage from './pages/ProductCatalogPage';
 import AdminProductsPage from './pages/AdminProductsPage';
 import AdminProductFormPage from './pages/AdminProductFormPage';
+import AdminCategoriesPage from './pages/AdminCategoriesPage';
+import AdminDashboardPage from './pages/AdminDashboardPage';
+import LoginPage from './pages/LoginPage';
+import AccountPage from './pages/AccountPage';
+import CategoryPage from './pages/CategoryPage';
 
 function NotFound() {
   return (
@@ -36,11 +41,16 @@ export default function App() {
         <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/order-confirmation" element={<OrderConfirmationPage />} />
         <Route path="/admin" element={<AdminLoginPage />} />
+        <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
         <Route path="/admin/orders" element={<AdminOrdersPage />} />
         <Route path="/admin/orders/:id" element={<AdminOrderDetailPage />} />
         <Route path="/admin/products" element={<AdminProductsPage />} />
         <Route path="/admin/products/new" element={<AdminProductFormPage />} />
         <Route path="/admin/products/:id" element={<AdminProductFormPage />} />
+        <Route path="/admin/categories" element={<AdminCategoriesPage />} />
+        <Route path="/category/:slug" element={<CategoryPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/account" element={<AccountPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>

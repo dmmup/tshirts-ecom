@@ -112,6 +112,15 @@ export async function bulkCreateVariants(productId, data) {
   return handleResponse(res); // { inserted, variants }
 }
 
+// ── PATCH /api/admin/products/:id/variants/:variantId ────────
+// stock: null (unlimited) | 0 (OOS) | positive integer
+export async function updateVariantStock(productId, variantId, stock) {
+  const res = await fetch(`${API_BASE}/admin/products/${productId}/variants/${variantId}`, {
+    method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ stock }),
+  });
+  return handleResponse(res);
+}
+
 // ── DELETE /api/admin/products/:id/variants/:variantId ───────
 export async function deleteVariant(productId, variantId) {
   const res = await fetch(`${API_BASE}/admin/products/${productId}/variants/${variantId}`, {
@@ -143,6 +152,50 @@ export async function signProductImageUpload({ productId, filename, contentType 
   const res = await fetch(`${API_BASE}/admin/products/upload/sign`, {
     method: 'POST', headers: authHeaders(),
     body: JSON.stringify({ productId, filename, contentType }),
+  });
+  return handleResponse(res);
+}
+
+// ═════════════════════════════════════════════════════════════
+// Category management
+// ═════════════════════════════════════════════════════════════
+
+// ── GET /api/admin/categories ─────────────────────────────────
+export async function fetchAdminCategories() {
+  const res = await fetch(`${API_BASE}/admin/categories`, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
+// ── POST /api/admin/categories ────────────────────────────────
+export async function createCategory(data) {
+  const res = await fetch(`${API_BASE}/admin/categories`, {
+    method: 'POST', headers: authHeaders(), body: JSON.stringify(data),
+  });
+  return handleResponse(res);
+}
+
+// ── PATCH /api/admin/categories/:id ──────────────────────────
+export async function updateCategory(id, data) {
+  const res = await fetch(`${API_BASE}/admin/categories/${id}`, {
+    method: 'PATCH', headers: authHeaders(), body: JSON.stringify(data),
+  });
+  return handleResponse(res);
+}
+
+// ── DELETE /api/admin/categories/:id ─────────────────────────
+export async function deleteCategory(id) {
+  const res = await fetch(`${API_BASE}/admin/categories/${id}`, {
+    method: 'DELETE', headers: authHeaders(),
+  });
+  return handleResponse(res);
+}
+
+// ── POST /api/admin/categories/upload/sign ────────────────────
+// Returns { signedUrl, publicUrl }
+export async function signCategoryImageUpload({ filename, contentType }) {
+  const res = await fetch(`${API_BASE}/admin/categories/upload/sign`, {
+    method: 'POST', headers: authHeaders(),
+    body: JSON.stringify({ filename, contentType }),
   });
   return handleResponse(res);
 }

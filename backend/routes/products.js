@@ -36,12 +36,18 @@ router.get('/', async (req, res) => {
         // Get min price + distinct color count from variants
         const { data: variants } = await supabaseAdmin
           .from('product_variants')
-          .select('price_cents, color_name')
+          .select('price_cents, color_name, color_hex, size')
           .eq('product_id', product.id);
 
         const prices = (variants || []).map((v) => v.price_cents);
         const minPrice = prices.length ? Math.min(...prices) : null;
         const colorCount = new Set((variants || []).map((v) => v.color_name)).size;
+
+        // Unique colors and sizes for client-side filtering
+        const colorMap = {};
+        (variants || []).forEach((v) => { if (!colorMap[v.color_name]) colorMap[v.color_name] = v.color_hex || '#888888'; });
+        const colors = Object.entries(colorMap).map(([name, hex]) => ({ name, hex }));
+        const sizes = [...new Set((variants || []).map((v) => v.size))];
 
         // Get first front image as thumbnail
         const { data: images } = await supabaseAdmin
@@ -54,7 +60,7 @@ router.get('/', async (req, res) => {
 
         const thumbnailUrl = images?.[0]?.url || null;
 
-        return { ...product, thumbnailUrl, minPrice, colorCount };
+        return { ...product, thumbnailUrl, minPrice, colorCount, colors, sizes };
       })
     );
 
@@ -125,7 +131,7 @@ router.post('/upload/sign', async (req, res) => {
 
   const ownerId = userId || anonymousId || 'anonymous';
   const sanitizedFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
-  const storagePath = `designs/${ownerId}/${Date.now()}_${sanitizedFilename}`;
+  const storagePath = `${ownerId}/${Date.now()}_${sanitizedFilename}`;
 
   try {
     const { data, error } = await supabaseAdmin.storage
@@ -163,10 +169,12 @@ router.post('/upload/confirm', async (req, res) => {
   try {
     // Verify file actually exists in storage
     const pathParts = storagePath.split('/');
+    const folder = pathParts.slice(0, -1).join('/');
+    const filename_only = pathParts[pathParts.length - 1];
     const { data: fileData, error: listErr } = await supabaseAdmin.storage
       .from('designs')
-      .list(pathParts.slice(1, -1).join('/'), {
-        search: pathParts[pathParts.length - 1],
+      .list(folder, {
+        search: filename_only,
       });
 
     if (listErr || !fileData || fileData.length === 0) {
@@ -272,6 +280,32 @@ router.post('/cart/items', async (req, res) => {
         .single();
       cartId = newCart.id;
       res.locals.newAnonymousId = newCart.anonymous_id;
+    }
+
+    // Stock check: fetch variant stock
+    const { data: variant } = await supabaseAdmin
+      .from('product_variants')
+      .select('stock')
+      .eq('id', variantId)
+      .single();
+
+    if (variant && variant.stock !== null) {
+      // Check existing quantity in cart for this variant
+      const { data: existingItems } = await supabaseAdmin
+        .from('cart_items')
+        .select('quantity')
+        .eq('cart_id', cartId)
+        .eq('variant_id', variantId);
+      const existingQty = (existingItems || []).reduce((s, i) => s + i.quantity, 0);
+      const requested = existingQty + parseInt(quantity, 10);
+      if (variant.stock === 0) {
+        return res.status(409).json({ error: 'This item is out of stock' });
+      }
+      if (requested > variant.stock) {
+        return res.status(409).json({
+          error: `Only ${variant.stock - existingQty} left in stock`,
+        });
+      }
     }
 
     // Insert cart item

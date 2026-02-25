@@ -28,6 +28,15 @@ router.post('/create-payment-intent', async (req, res) => {
     return res.status(400).json({ error: 'anonymousId is required' });
   }
 
+  // Optionally identify the authenticated user
+  let userId = null;
+  const authHeader = req.headers.authorization;
+  if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.slice(7);
+    const { data: { user } } = await supabaseAdmin.auth.getUser(token).catch(() => ({ data: {} }));
+    userId = user?.id ?? null;
+  }
+
   if (!process.env.STRIPE_SECRET_KEY) {
     return res.status(500).json({ error: 'Stripe is not configured on the server.' });
   }
@@ -127,6 +136,7 @@ router.post('/create-payment-intent', async (req, res) => {
         .insert({
           cart_id: cart.id,
           anonymous_id: anonymousId,
+          user_id: userId,
           status: 'pending',
           subtotal_cents: totalCents,
           stripe_payment_intent_id: paymentIntent.id,

@@ -4,9 +4,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   fetchAdminProduct, createProduct, updateProduct,
-  bulkCreateVariants, deleteVariant,
+  bulkCreateVariants, deleteVariant, updateVariantStock,
   addProductImage, deleteProductImage, signProductImageUpload,
 } from '../api/admin';
+import { fetchCategories } from '../api/products';
 import { AdminTopBar } from './AdminProductsPage';
 
 const SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'];
@@ -55,6 +56,8 @@ export default function AdminProductFormPage() {
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [description, setDescription] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [categories, setCategories] = useState([]);
   const [savedProduct, setSavedProduct] = useState(null); // set after save
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
@@ -101,6 +104,11 @@ export default function AdminProductFormPage() {
     return false;
   }, [navigate]);
 
+  // Load categories
+  useEffect(() => {
+    fetchCategories().then(setCategories).catch(() => {});
+  }, []);
+
   // Load existing product for edit
   useEffect(() => {
     if (!sessionStorage.getItem('admin_token')) { navigate('/admin', { replace: true }); return; }
@@ -110,6 +118,7 @@ export default function AdminProductFormPage() {
           setName(product.name);
           setSlug(product.slug);
           setDescription(product.description || '');
+          setCategoryId(product.category_id || '');
           setSavedProduct(product);
           setVariants(v || []);
           setImages(img || []);
@@ -136,12 +145,12 @@ export default function AdminProductFormPage() {
     try {
       let result;
       if (isNew && !savedProduct) {
-        result = await createProduct({ name: name.trim(), slug: slug.trim(), description: description.trim() || null });
+        result = await createProduct({ name: name.trim(), slug: slug.trim(), description: description.trim() || null, category_id: categoryId || null });
         setSavedProduct(result);
         // Update URL to edit page without full navigation
         window.history.replaceState(null, '', `/admin/products/${result.id}`);
       } else {
-        result = await updateProduct(productId, { name: name.trim(), slug: slug.trim(), description: description.trim() || null });
+        result = await updateProduct(productId, { name: name.trim(), slug: slug.trim(), description: description.trim() || null, category_id: categoryId || null });
         setSavedProduct(result);
       }
       setSaveSuccess(true);
@@ -198,6 +207,18 @@ export default function AdminProductFormPage() {
     try {
       await deleteVariant(productId, variantId);
       setVariants((prev) => prev.filter((v) => v.id !== variantId));
+    } catch (err) {
+      if (!handle401(err)) setVariantError(err.message);
+    }
+  };
+
+  // ── Update variant stock ──────────────────────────────────
+  // stockValue: '' (unlimited) | '0' (OOS) | positive string
+  const handleUpdateVariantStock = async (variantId, stockValue) => {
+    const stock = stockValue === '' ? null : parseInt(stockValue, 10);
+    try {
+      const updated = await updateVariantStock(productId, variantId, stock);
+      setVariants((prev) => prev.map((v) => v.id === variantId ? { ...v, stock: updated.stock } : v));
     } catch (err) {
       if (!handle401(err)) setVariantError(err.message);
     }
@@ -318,6 +339,18 @@ export default function AdminProductFormPage() {
                 placeholder="Short product description shown on the product page…"
                 className={`${inputCls} resize-none`}
               />
+            </Field>
+            <Field label="Category">
+              <select
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+                className={inputCls}
+              >
+                <option value="">— No category —</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
             </Field>
 
             {saveError && (
@@ -451,11 +484,27 @@ export default function AdminProductFormPage() {
               <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{variantError}</p>
             )}
 
+            {/* Checklist of what's still needed */}
+            {(!pendingColors.length || !selectedSizes.length || !variantPrice) && (
+              <div className="flex flex-col gap-1 text-xs text-slate-500">
+                <p className="font-semibold text-slate-600 mb-0.5">To unlock "Generate variants":</p>
+                <span className={pendingColors.length ? 'text-green-600' : ''}>
+                  {pendingColors.length ? '✓' : '○'} Add at least one color (type name + pick color → click <strong>Add</strong>)
+                </span>
+                <span className={selectedSizes.length ? 'text-green-600' : ''}>
+                  {selectedSizes.length ? '✓' : '○'} Select at least one size
+                </span>
+                <span className={variantPrice ? 'text-green-600' : ''}>
+                  {variantPrice ? '✓' : '○'} Enter a price
+                </span>
+              </div>
+            )}
+
             <button
               type="button"
               onClick={handleGenerateVariants}
               disabled={generatingVariants || !pendingColors.length || !selectedSizes.length || !variantPrice}
-              className="self-start px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white font-semibold rounded-xl text-sm transition-colors"
+              className="self-start px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 disabled:cursor-not-allowed text-white font-semibold rounded-xl text-sm transition-colors"
             >
               {generatingVariants ? 'Generating…' : `Generate ${pendingColors.length * selectedSizes.length || 0} variants`}
             </button>
@@ -470,6 +519,7 @@ export default function AdminProductFormPage() {
                       <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Size</th>
                       <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Price</th>
                       <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">SKU</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide" title="Leave blank for unlimited stock">Stock</th>
                       <th className="px-4 py-2.5" />
                     </tr>
                   </thead>
@@ -485,6 +535,17 @@ export default function AdminProductFormPage() {
                         <td className="px-4 py-2.5 text-slate-700">{v.size}</td>
                         <td className="px-4 py-2.5 text-slate-700">${formatPrice(v.price_cents)}</td>
                         <td className="px-4 py-2.5 text-slate-400 font-mono text-xs">{v.sku}</td>
+                        <td className="px-4 py-2.5">
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            defaultValue={v.stock ?? ''}
+                            placeholder="∞"
+                            onBlur={(e) => handleUpdateVariantStock(v.id, e.target.value)}
+                            className="w-20 px-2 py-1 text-sm rounded-lg border border-slate-200 text-slate-700 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent"
+                          />
+                        </td>
                         <td className="px-4 py-2.5 text-right">
                           <button
                             onClick={() => handleDeleteVariant(v.id)}

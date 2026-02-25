@@ -142,10 +142,12 @@ export async function removeCartItem(itemId) {
 }
 
 // ── Create Stripe PaymentIntent ──────────────────────────────
-export async function createPaymentIntent({ anonymousId, shipping }) {
+export async function createPaymentIntent({ anonymousId, shipping, accessToken }) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
   const res = await fetch(`${API_BASE}/checkout/create-payment-intent`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ anonymousId, shipping }),
   });
   if (!res.ok) {
@@ -153,4 +155,18 @@ export async function createPaymentIntent({ anonymousId, shipping }) {
     throw new Error(err.error || 'Could not create payment intent');
   }
   return res.json(); // { clientSecret, totalCents, cartId }
+}
+
+// ── Fetch all categories ─────────────────────────────────────
+export async function fetchCategories() {
+  const res = await fetch(`${API_BASE}/categories`);
+  if (!res.ok) throw new Error('Could not fetch categories');
+  return res.json(); // [{ id, slug, name, image_url, sort_order }]
+}
+
+// ── Fetch products for a category ───────────────────────────
+export async function fetchCategoryProducts(slug) {
+  const res = await fetch(`${API_BASE}/categories/${encodeURIComponent(slug)}/products`);
+  if (!res.ok) throw new Error(`Could not fetch products for category: ${slug}`);
+  return res.json(); // { category, products: [...] }
 }

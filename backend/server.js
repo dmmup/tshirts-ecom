@@ -49,6 +49,21 @@ app.use('/api/checkout', checkoutRouter);
 const adminRouter = require('./routes/admin');
 app.use('/api/admin', adminRouter);
 
+// Account:  GET  /api/account/profile
+//           PATCH /api/account/profile
+//           GET  /api/account/orders
+const accountRouter = require('./routes/account');
+app.use('/api/account', accountRouter);
+
+// Categories: GET /api/categories
+//             GET /api/categories/:slug/products
+const categoriesRouter = require('./routes/categories');
+app.use('/api/categories', categoriesRouter);
+
+// Auth:     POST /api/auth/register
+const authRouter = require('./routes/auth');
+app.use('/api/auth', authRouter);
+
 // Health check
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 

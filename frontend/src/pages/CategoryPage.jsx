@@ -1,22 +1,51 @@
-// src/pages/ProductCatalogPage.jsx
+// src/pages/CategoryPage.jsx
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { fetchProducts } from '../api/products';
+import { Link, useParams, useNavigate } from 'react-router-dom';
+import { fetchCategoryProducts } from '../api/products';
 import { useAuth } from '../context/AuthContext';
 import CatalogView from '../components/CatalogView';
 
-export default function ProductCatalogPage() {
+export default function CategoryPage() {
+  const { slug } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
+
+  const [category, setCategory] = useState(null);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetchProducts()
-      .then(setProducts)
-      .catch((err) => setError(err.message))
+    setLoading(true);
+    fetchCategoryProducts(slug)
+      .then(({ category: cat, products: prods }) => {
+        setCategory(cat);
+        setProducts(prods);
+      })
+      .catch((err) => {
+        if (err.message.includes('not found')) navigate('/products', { replace: true });
+        else setError(err.message);
+      })
       .finally(() => setLoading(false));
-  }, []);
+  }, [slug, navigate]);
+
+  const breadcrumb = (
+    <nav className="flex items-center gap-2 text-xs text-slate-400">
+      <Link to="/" className="hover:text-indigo-600 transition-colors">Home</Link>
+      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+      </svg>
+      <Link to="/products" className="hover:text-indigo-600 transition-colors">Products</Link>
+      {category && (
+        <>
+          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+          <span className="text-slate-600 font-medium">{category.name}</span>
+        </>
+      )}
+    </nav>
+  );
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -27,12 +56,9 @@ export default function ProductCatalogPage() {
             Print<span className="text-indigo-600">Shop</span>
           </Link>
           <nav className="flex items-center gap-6 text-sm font-medium text-slate-600">
-            <Link to="/products" className="text-indigo-600 font-semibold hidden sm:block">
+            <Link to="/products" className="hover:text-indigo-600 transition-colors hidden sm:block">
               Products
             </Link>
-            <a href="/#how-it-works" className="hover:text-indigo-600 transition-colors hidden sm:block">
-              How it works
-            </a>
             {user ? (
               <Link to="/account" className="hover:text-indigo-600 transition-colors hidden sm:block">
                 My Account
@@ -61,8 +87,13 @@ export default function ProductCatalogPage() {
       <CatalogView
         products={products}
         loading={loading}
-        title="Our Products"
-        subtitle="Choose a blank, customize it with your design, and we'll print and ship it to you."
+        title={category?.name || 'Products'}
+        subtitle={
+          !loading && products.length > 0
+            ? `${products.length} product${products.length !== 1 ? 's' : ''} in this category`
+            : undefined
+        }
+        breadcrumb={breadcrumb}
       />
     </div>
   );
