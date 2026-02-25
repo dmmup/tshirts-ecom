@@ -25,12 +25,77 @@ const supabaseAdmin = createClient(
 );
 
 // ─────────────────────────────────────────────────────────────
+// Helper: validate a promo code and return discount info
+// Throws an error with .statusCode if invalid
+// ─────────────────────────────────────────────────────────────
+async function getPromoDiscount(code, subtotalCents) {
+  const { data: promo, error } = await supabaseAdmin
+    .from('promo_codes')
+    .select('*')
+    .ilike('code', code.trim())
+    .eq('active', true)
+    .maybeSingle();
+
+  if (error || !promo) {
+    const err = new Error('Invalid promo code');
+    err.statusCode = 404;
+    throw err;
+  }
+  if (promo.expires_at && new Date(promo.expires_at) < new Date()) {
+    const err = new Error('Promo code has expired');
+    err.statusCode = 400;
+    throw err;
+  }
+  if (promo.max_uses !== null && promo.uses_count >= promo.max_uses) {
+    const err = new Error('Promo code has been fully redeemed');
+    err.statusCode = 400;
+    throw err;
+  }
+  if (subtotalCents < promo.min_order_cents) {
+    const min = `$${(promo.min_order_cents / 100).toFixed(2)}`;
+    const err = new Error(`Minimum order of ${min} required for this code`);
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const discountCents = promo.discount_type === 'percent'
+    ? Math.round(subtotalCents * promo.discount_value / 100)
+    : Math.min(promo.discount_value, subtotalCents);
+
+  return { promo, discountCents };
+}
+
+// ─────────────────────────────────────────────────────────────
+// POST /api/checkout/validate-promo
+// Body: { code, subtotalCents }
+// Returns: { valid, code, discountCents, discountType, discountValue }
+// ─────────────────────────────────────────────────────────────
+router.post('/validate-promo', async (req, res) => {
+  const { code, subtotalCents } = req.body;
+  if (!code) return res.status(400).json({ error: 'Code is required' });
+  if (!subtotalCents || subtotalCents < 1) return res.status(400).json({ error: 'subtotalCents is required' });
+
+  try {
+    const { promo, discountCents } = await getPromoDiscount(code, subtotalCents);
+    return res.json({
+      valid: true,
+      code: promo.code,
+      discountCents,
+      discountType: promo.discount_type,
+      discountValue: promo.discount_value,
+    });
+  } catch (err) {
+    return res.status(err.statusCode || 400).json({ error: err.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
 // POST /api/checkout/create-payment-intent
-// Body: { anonymousId, shipping? }
-// Returns: { clientSecret, totalCents, cartId }
+// Body: { anonymousId, shipping?, promoCode? }
+// Returns: { clientSecret, totalCents, subtotalCents, discountCents, cartId }
 // ─────────────────────────────────────────────────────────────
 router.post('/create-payment-intent', async (req, res) => {
-  const { anonymousId, shipping } = req.body;
+  const { anonymousId, shipping, promoCode } = req.body;
 
   if (!anonymousId) {
     return res.status(400).json({ error: 'anonymousId is required' });
@@ -83,15 +148,29 @@ router.post('/create-payment-intent', async (req, res) => {
     const priceMap = {};
     (variants || []).forEach((v) => { priceMap[v.id] = v.price_cents; });
 
-    // 4. Calculate total
-    const totalCents = cartItems.reduce(
+    // 4. Calculate subtotal
+    const subtotalCents = cartItems.reduce(
       (sum, item) => sum + (priceMap[item.variant_id] || 0) * item.quantity,
       0
     );
 
-    if (totalCents < 50) {
+    if (subtotalCents < 50) {
       return res.status(400).json({ error: 'Order total is below the minimum ($0.50)' });
     }
+
+    // 4b. Apply promo code if provided
+    let discountCents = 0;
+    let appliedPromoCode = null;
+    if (promoCode) {
+      try {
+        const { discountCents: dc, promo } = await getPromoDiscount(promoCode, subtotalCents);
+        discountCents = dc;
+        appliedPromoCode = promo.code;
+      } catch (err) {
+        return res.status(err.statusCode || 400).json({ error: err.message });
+      }
+    }
+    const finalAmountCents = subtotalCents - discountCents;
 
     // 5. Check for an existing pending order/PaymentIntent for this cart
     const { data: existingOrder } = await supabaseAdmin
@@ -104,18 +183,21 @@ router.post('/create-payment-intent', async (req, res) => {
     let paymentIntent;
 
     if (existingOrder?.stripe_payment_intent_id) {
-      // Reuse + sync amount in case cart changed
+      // Reuse + sync amount in case cart or promo changed
       paymentIntent = await stripe.paymentIntents.update(
         existingOrder.stripe_payment_intent_id,
-        { amount: totalCents }
+        { amount: finalAmountCents }
       );
 
-      // Update shipping on existing order
-      if (shipping) {
-        await supabaseAdmin
-          .from('orders')
-          .update({
-            subtotal_cents: totalCents,
+      // Update order with latest shipping + promo info
+      // Only write promo columns if a code was actually applied (avoids errors
+      // when the DB migration hasn't been run yet).
+      await supabaseAdmin
+        .from('orders')
+        .update({
+          subtotal_cents: subtotalCents,
+          ...(appliedPromoCode != null && { discount_cents: discountCents, promo_code: appliedPromoCode }),
+          ...(shipping && {
             shipping_name: shipping.name || null,
             shipping_email: shipping.email || null,
             shipping_line1: shipping.line1 || null,
@@ -124,14 +206,14 @@ router.post('/create-payment-intent', async (req, res) => {
             shipping_state: shipping.state || null,
             shipping_postal_code: shipping.postal_code || null,
             shipping_country: shipping.country || 'US',
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', existingOrder.id);
-      }
+          }),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existingOrder.id);
     } else {
       // Create new PaymentIntent
       paymentIntent = await stripe.paymentIntents.create({
-        amount: totalCents,
+        amount: finalAmountCents,
         currency: 'usd',
         automatic_payment_methods: { enabled: true },
         metadata: { cartId: cart.id, anonymousId },
@@ -139,6 +221,8 @@ router.post('/create-payment-intent', async (req, res) => {
       });
 
       // Create pending order record
+      // Only include promo columns when a code was applied (backward compat
+      // with deployments where the migration hasn't been run yet).
       const { data: newOrder, error: orderErr } = await supabaseAdmin
         .from('orders')
         .insert({
@@ -146,7 +230,8 @@ router.post('/create-payment-intent', async (req, res) => {
           anonymous_id: anonymousId,
           user_id: userId,
           status: 'pending',
-          subtotal_cents: totalCents,
+          subtotal_cents: subtotalCents,
+          ...(appliedPromoCode != null && { discount_cents: discountCents, promo_code: appliedPromoCode }),
           stripe_payment_intent_id: paymentIntent.id,
           shipping_name: shipping?.name || null,
           shipping_email: shipping?.email || null,
@@ -179,7 +264,9 @@ router.post('/create-payment-intent', async (req, res) => {
 
     return res.json({
       clientSecret: paymentIntent.client_secret,
-      totalCents,
+      totalCents: finalAmountCents,
+      subtotalCents,
+      discountCents,
       cartId: cart.id,
     });
   } catch (err) {
@@ -225,6 +312,32 @@ async function handleWebhook(req, res) {
       } else {
         console.log(`[webhook] Order paid for PI: ${pi.id}`);
 
+        // Increment promo code uses_count if one was applied (requires migration)
+        // Look up the promo_code on the order separately to avoid SELECT errors
+        // when the column may not exist yet.
+        try {
+          const { data: orderPromo } = await supabaseAdmin
+            .from('orders')
+            .select('promo_code')
+            .eq('id', order.id)
+            .maybeSingle();
+          if (orderPromo?.promo_code) {
+            const { data: promo } = await supabaseAdmin
+              .from('promo_codes')
+              .select('id, uses_count')
+              .ilike('code', orderPromo.promo_code)
+              .maybeSingle();
+            if (promo) {
+              await supabaseAdmin
+                .from('promo_codes')
+                .update({ uses_count: promo.uses_count + 1 })
+                .eq('id', promo.id);
+            }
+          }
+        } catch (promoErr) {
+          // Non-fatal — promo columns may not exist yet (migration pending)
+        }
+
         // 2. Send confirmation email if we have an email address and SMTP is configured
         if (order?.shipping_email && process.env.SMTP_HOST && process.env.SMTP_USER) {
           try {
@@ -236,7 +349,8 @@ async function handleWebhook(req, res) {
 
             const storeName = process.env.STORE_NAME || 'PrintShop';
             const orderRef = order.id.slice(0, 8).toUpperCase();
-            const totalFormatted = `$${(order.subtotal_cents / 100).toFixed(2)}`;
+            // pi.amount is the actual amount charged by Stripe (already includes any discount)
+            const totalFormatted = `$${(pi.amount / 100).toFixed(2)}`;
 
             const itemRows = (items || []).map((item) => {
               const name = item.product_variants?.products?.name || 'Custom T-Shirt';

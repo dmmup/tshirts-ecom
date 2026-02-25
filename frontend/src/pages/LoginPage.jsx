@@ -1,6 +1,7 @@
 // src/pages/LoginPage.jsx
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { useAuth } from '../context/AuthContext';
 
 const API = import.meta.env.VITE_API_URL || '/api';
@@ -193,6 +194,10 @@ export default function LoginPage() {
   // ── Render ───────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
+      <Helmet>
+        <title>Sign In | PrintShop</title>
+        <meta name="description" content="Sign in or create a free PrintShop account to track orders and save your wishlist." />
+      </Helmet>
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-sm border-b border-slate-100">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">

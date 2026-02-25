@@ -1,6 +1,7 @@
 // src/pages/ProductCatalogPage.jsx
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { fetchProducts } from '../api/products';
 import { useAuth } from '../context/AuthContext';
 import CatalogView from '../components/CatalogView';
@@ -20,6 +21,10 @@ export default function ProductCatalogPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <Helmet>
+        <title>All Products | PrintShop</title>
+        <meta name="description" content="Browse our full range of custom T-shirts, hoodies, and apparel. Upload your design and we'll print and ship it in 48h." />
+      </Helmet>
       {/* Navbar */}
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-sm border-b border-slate-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">

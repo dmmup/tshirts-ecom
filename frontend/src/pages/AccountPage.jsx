@@ -1,7 +1,10 @@
 // src/pages/AccountPage.jsx
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { useAuth } from '../context/AuthContext';
+import { useWishlist } from '../context/WishlistContext';
+import { fetchWishlist } from '../api/products';
 
 const API = import.meta.env.VITE_API_URL || '/api';
 
@@ -222,6 +225,90 @@ function AddressTab({ session }) {
   );
 }
 
+// ── Wishlist Tab ───────────────────────────────────────────────
+function WishlistTab({ session }) {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const { toggle } = useWishlist();
+
+  useEffect(() => {
+    if (!session?.access_token) return;
+    fetchWishlist(session.access_token)
+      .then(setItems)
+      .catch(() => setItems([]))
+      .finally(() => setLoading(false));
+  }, [session]);
+
+  function handleRemove(productId) {
+    setItems((prev) => prev.filter((i) => i.productId !== productId));
+    toggle(productId); // also updates global context
+  }
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 animate-pulse">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="rounded-2xl bg-slate-100 aspect-[4/5]" />
+        ))}
+      </div>
+    );
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="text-center py-16 text-slate-400">
+        <svg className="w-12 h-12 mx-auto mb-3 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+            d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+        </svg>
+        <p className="font-medium text-slate-500">No saved items</p>
+        <p className="text-sm mt-1">Tap the heart icon on any product to save it here.</p>
+        <Link to="/products" className="mt-4 inline-block text-indigo-600 hover:underline text-sm font-medium">
+          Browse products →
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+      {items.map((item) => (
+        <div key={item.productId} className="group relative bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+          <Link to={`/products/${item.slug}`}>
+            {item.thumbnailUrl ? (
+              <img src={item.thumbnailUrl} alt={item.name} className="w-full aspect-[4/5] object-cover" />
+            ) : (
+              <div className="w-full aspect-[4/5] bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
+                <svg className="w-10 h-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.2}
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+            )}
+            <div className="p-3">
+              <p className="text-sm font-semibold text-slate-800 line-clamp-2 leading-snug">{item.name}</p>
+              {item.minPrice && (
+                <p className="text-xs text-slate-500 mt-0.5">From {(item.minPrice / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</p>
+              )}
+            </div>
+          </Link>
+          {/* Remove heart button */}
+          <button
+            onClick={() => handleRemove(item.productId)}
+            aria-label="Remove from wishlist"
+            className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white/90 text-rose-500 shadow opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-50"
+          >
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Profile Tab ────────────────────────────────────────────────
 function ProfileTab({ user, session }) {
   const [fullName, setFullName] = useState('');
@@ -324,6 +411,10 @@ export default function AccountPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <Helmet>
+        <title>My Account | PrintShop</title>
+        <meta name="robots" content="noindex" />
+      </Helmet>
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-sm border-b border-slate-100">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
@@ -355,6 +446,7 @@ export default function AccountPage() {
         <div className="flex gap-1 bg-slate-100 p-1 rounded-xl mb-8 w-fit">
           {[
             { id: 'orders', label: 'Orders' },
+            { id: 'wishlist', label: 'Wishlist' },
             { id: 'address', label: 'Saved Address' },
             { id: 'profile', label: 'Profile' },
           ].map(({ id, label }) => (
@@ -372,6 +464,7 @@ export default function AccountPage() {
 
         {/* Tab content */}
         {tab === 'orders' && <OrdersTab session={session} />}
+        {tab === 'wishlist' && <WishlistTab session={session} />}
         {tab === 'address' && <AddressTab session={session} />}
         {tab === 'profile' && <ProfileTab user={user} session={session} />}
       </main>

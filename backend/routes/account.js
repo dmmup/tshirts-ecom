@@ -158,4 +158,119 @@ router.get('/orders', async (req, res) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────
+// GET /api/account/wishlist
+// Returns the user's wishlist with product details.
+// ─────────────────────────────────────────────────────────────
+router.get('/wishlist', async (req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('wishlists')
+      .select('product_id, created_at')
+      .eq('user_id', req.user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('[GET /api/account/wishlist]', error);
+      return res.status(500).json({ error: 'Could not fetch wishlist' });
+    }
+
+    if (!data || data.length === 0) return res.json([]);
+
+    // Enrich with product details
+    const productIds = data.map((r) => r.product_id);
+    const { data: products } = await supabaseAdmin
+      .from('products')
+      .select('id, name, slug')
+      .in('id', productIds);
+
+    const productMap = {};
+    (products || []).forEach((p) => { productMap[p.id] = p; });
+
+    // For each product get thumbnail + min price from variants
+    const enriched = await Promise.all(
+      data.map(async (row) => {
+        const product = productMap[row.product_id];
+        if (!product) return null;
+
+        const [imgResult, variantsResult] = await Promise.all([
+          supabaseAdmin
+            .from('product_images')
+            .select('url')
+            .eq('product_id', row.product_id)
+            .limit(1)
+            .maybeSingle(),
+          supabaseAdmin
+            .from('product_variants')
+            .select('price_cents')
+            .eq('product_id', row.product_id),
+        ]);
+
+        const prices = (variantsResult.data || []).map((v) => v.price_cents);
+        const minPrice = prices.length ? Math.min(...prices) : null;
+
+        return {
+          productId: row.product_id,
+          addedAt: row.created_at,
+          name: product.name,
+          slug: product.slug,
+          minPrice,
+          thumbnailUrl: imgResult.data?.url || null,
+        };
+      })
+    );
+
+    return res.json(enriched.filter(Boolean));
+  } catch (err) {
+    console.error('[GET /api/account/wishlist]', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// POST /api/account/wishlist/:productId
+// Add a product to the wishlist (idempotent).
+// ─────────────────────────────────────────────────────────────
+router.post('/wishlist/:productId', async (req, res) => {
+  const { productId } = req.params;
+  try {
+    const { error } = await supabaseAdmin
+      .from('wishlists')
+      .upsert({ user_id: req.user.id, product_id: productId }, { onConflict: 'user_id,product_id' });
+
+    if (error) {
+      console.error('[POST /api/account/wishlist]', error);
+      return res.status(500).json({ error: 'Could not add to wishlist' });
+    }
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('[POST /api/account/wishlist]', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// DELETE /api/account/wishlist/:productId
+// Remove a product from the wishlist.
+// ─────────────────────────────────────────────────────────────
+router.delete('/wishlist/:productId', async (req, res) => {
+  const { productId } = req.params;
+  try {
+    const { error } = await supabaseAdmin
+      .from('wishlists')
+      .delete()
+      .eq('user_id', req.user.id)
+      .eq('product_id', productId);
+
+    if (error) {
+      console.error('[DELETE /api/account/wishlist]', error);
+      return res.status(500).json({ error: 'Could not remove from wishlist' });
+    }
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('[DELETE /api/account/wishlist]', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 module.exports = router;

@@ -1,6 +1,7 @@
 // src/pages/CategoryPage.jsx
 import { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { fetchCategoryProducts } from '../api/products';
 import { useAuth } from '../context/AuthContext';
 import CatalogView from '../components/CatalogView';
@@ -49,6 +50,10 @@ export default function CategoryPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <Helmet>
+        <title>{category ? `${category.name} | PrintShop` : 'PrintShop'}</title>
+        {category?.description && <meta name="description" content={category.description} />}
+      </Helmet>
       {/* Navbar */}
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-sm border-b border-slate-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">

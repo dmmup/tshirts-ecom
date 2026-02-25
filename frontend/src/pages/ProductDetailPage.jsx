@@ -6,9 +6,11 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { fetchProduct, fetchRelatedProducts, fetchReviews, submitReview, uploadDesign, addToCart, fetchCart, removeCartItem, updateCartItem } from '../api/products';
 import DesignPreview, { makeDefaultPlacement } from '../components/DesignPreview';
 import { useAuth } from '../context/AuthContext';
+import { useWishlist } from '../context/WishlistContext';
 
 // ── Helpers ──────────────────────────────────────────────────
 
@@ -801,6 +803,7 @@ function ReviewsSection({ slug, product, session }) {
 export default function ProductDetailPage() {
   const { slug } = useParams();
   const { user, session } = useAuth();
+  const { isWished, toggle: toggleWish } = useWishlist();
 
   // Product data
   const [loading, setLoading]         = useState(true);
@@ -1131,6 +1134,14 @@ export default function ProductDetailPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <Helmet>
+        <title>{product.name} | PrintShop</title>
+        <meta name="description" content={product.description ? product.description.slice(0, 155) : `Order a custom ${product.name} — upload your design and we'll print and ship it in 48h.`} />
+        <meta property="og:title" content={`${product.name} | PrintShop`} />
+        <meta property="og:description" content={product.description ? product.description.slice(0, 155) : `Custom printed ${product.name}`} />
+        {images[0]?.url && <meta property="og:image" content={images[0].url} />}
+        <meta property="og:type" content="product" />
+      </Helmet>
       {/* ── Top nav ──────────────────────────────────────────── */}
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-sm border-b border-slate-100">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
@@ -1188,7 +1199,25 @@ export default function ProductDetailPage() {
 
             {/* Name + rating + price */}
             <div className="space-y-2">
-              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 leading-tight">{product.name}</h1>
+              <div className="flex items-start justify-between gap-3">
+                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 leading-tight">{product.name}</h1>
+                {user && (
+                  <button
+                    onClick={() => toggleWish(product.id)}
+                    aria-label={isWished(product.id) ? 'Remove from wishlist' : 'Save to wishlist'}
+                    className={`flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full border-2 transition-all mt-1 ${
+                      isWished(product.id)
+                        ? 'border-rose-400 bg-rose-50 text-rose-500'
+                        : 'border-slate-200 text-slate-400 hover:border-rose-300 hover:text-rose-400'
+                    }`}
+                  >
+                    <svg className="w-5 h-5" fill={isWished(product.id) ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    </svg>
+                  </button>
+                )}
+              </div>
               <StarRating rating={product.base_rating} count={product.rating_count} />
               <div className="flex items-baseline gap-3 pt-1">
                 <span className="text-3xl font-bold text-slate-900">

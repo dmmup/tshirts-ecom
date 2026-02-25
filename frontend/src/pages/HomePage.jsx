@@ -1,12 +1,143 @@
 // src/pages/HomePage.jsx
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { useAuth } from '../context/AuthContext';
 import { fetchCategories, fetchProducts } from '../api/products';
 import CatalogView from '../components/CatalogView';
 
+// ── Product Picker Modal ──────────────────────────────────────
+function ProductPickerModal({ products, loading, onClose }) {
+  const navigate = useNavigate();
+
+  // Close on Escape key
+  useEffect(() => {
+    function onKey(e) { if (e.key === 'Escape') onClose(); }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  // Lock background scroll
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, []);
+
+  function pick(slug) {
+    navigate(`/products/${slug}`);
+    onClose();
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      onClick={onClose}
+    >
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+
+      {/* Panel — bottom sheet on mobile, centered card on desktop */}
+      <div
+        className="relative z-10 bg-white w-full sm:max-w-2xl rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[90vh] flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-slate-100 flex-shrink-0">
+          <div>
+            <h2 className="text-xl font-bold text-slate-900">Choose your garment</h2>
+            <p className="text-sm text-slate-500 mt-0.5">Pick a style to start customising</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-500 transition-colors"
+            aria-label="Close"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Scrollable product grid */}
+        <div className="overflow-y-auto p-6">
+          {loading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="rounded-2xl border border-slate-100 overflow-hidden animate-pulse">
+                  <div className="aspect-square bg-slate-100" />
+                  <div className="p-3 space-y-2">
+                    <div className="h-3 bg-slate-100 rounded w-3/4" />
+                    <div className="h-3 bg-slate-100 rounded w-1/2" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : products.length === 0 ? (
+            <p className="text-center text-slate-500 py-12 text-sm">No products available yet.</p>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              {products.map((product) => (
+                <button
+                  key={product.id}
+                  onClick={() => pick(product.slug)}
+                  className="group text-left rounded-2xl border border-slate-100 hover:border-indigo-200 hover:shadow-md transition-all duration-150 overflow-hidden"
+                >
+                  {/* Thumbnail */}
+                  <div className="aspect-square bg-slate-50 overflow-hidden">
+                    {product.thumbnailUrl ? (
+                      <img
+                        src={product.thumbnailUrl}
+                        alt={product.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-indigo-100 to-indigo-200 flex items-center justify-center">
+                        <svg className="w-10 h-10 text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                            d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Info */}
+                  <div className="p-3">
+                    <p className="text-sm font-semibold text-slate-800 truncate group-hover:text-indigo-600 transition-colors">
+                      {product.name}
+                    </p>
+                    {product.minPrice > 0 && (
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        From {(product.minPrice / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                      </p>
+                    )}
+                    {product.colors?.length > 0 && (
+                      <div className="flex gap-1 mt-2 flex-wrap items-center">
+                        {product.colors.slice(0, 6).map((color) => (
+                          <span
+                            key={color}
+                            className="w-3 h-3 rounded-full border border-white ring-1 ring-slate-200"
+                            style={{ background: color.startsWith('#') ? color : color }}
+                            title={color}
+                          />
+                        ))}
+                        {product.colors.length > 6 && (
+                          <span className="text-[10px] text-slate-400 leading-none">+{product.colors.length - 6}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Top Nav ──────────────────────────────────────────────────
-function Navbar() {
+function Navbar({ onStartDesigning }) {
   const { user } = useAuth();
   return (
     <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-sm border-b border-slate-100">
@@ -43,12 +174,12 @@ function Navbar() {
                 d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
             </svg>
           </Link>
-          <Link
-            to="/products/gildan-budget-unisex-tshirt"
+          <button
+            onClick={onStartDesigning}
             className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors text-sm font-semibold"
           >
             Start designing
-          </Link>
+          </button>
         </nav>
       </div>
     </header>
@@ -89,7 +220,7 @@ const STEPS = [
   },
 ];
 
-function HowItWorks() {
+function HowItWorks({ onStartDesigning }) {
   return (
     <section id="how-it-works" className="py-20 sm:py-28 bg-slate-50">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
@@ -122,15 +253,15 @@ function HowItWorks() {
         </div>
 
         <div className="mt-12 text-center">
-          <Link
-            to="/products/gildan-budget-unisex-tshirt"
+          <button
+            onClick={onStartDesigning}
             className="inline-flex items-center gap-2 px-7 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-2xl transition-all shadow-md shadow-indigo-100 active:scale-[0.98] text-sm"
           >
             Get started now
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3"/>
             </svg>
-          </Link>
+          </button>
         </div>
       </div>
     </section>
@@ -343,6 +474,7 @@ function ShopByCategory() {
 export default function HomePage() {
   const [products, setProducts] = useState([]);
   const [productsLoading, setProductsLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
     fetchProducts()
@@ -351,19 +483,29 @@ export default function HomePage() {
       .finally(() => setProductsLoading(false));
   }, []);
 
+  function openModal() { setModalOpen(true); }
+  function closeModal() { setModalOpen(false); }
+
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
+      <Helmet>
+        <title>PrintShop — Custom T-Shirts & Apparel</title>
+        <meta name="description" content="Upload your artwork, choose your garment, and we'll print and ship it in 48h. No minimum order. 100% satisfaction guaranteed." />
+        <meta property="og:title" content="PrintShop — Custom T-Shirts & Apparel" />
+        <meta property="og:description" content="Upload your artwork, choose your garment, and we'll print and ship it in 48h." />
+        <meta property="og:type" content="website" />
+      </Helmet>
+      <Navbar onStartDesigning={openModal} />
 
       {/* Slim announcement bar */}
       <div className="bg-indigo-600 py-2.5 px-4 text-center text-sm font-medium text-indigo-100">
         Custom T-shirts · Printed &amp; shipped in 48h · No minimum order ·{' '}
-        <Link
-          to="/products/gildan-budget-unisex-tshirt"
+        <button
+          onClick={openModal}
           className="text-white font-bold underline underline-offset-2 hover:text-indigo-200 transition-colors"
         >
           Start designing →
-        </Link>
+        </button>
       </div>
 
       <main className="flex-1">
@@ -374,10 +516,18 @@ export default function HomePage() {
           subtitle="Choose a blank, customize it with your design, and we'll print and ship it to you."
         />
         <ShopByCategory />
-        <HowItWorks />
+        <HowItWorks onStartDesigning={openModal} />
         <FeaturesBar />
       </main>
       <Footer />
+
+      {modalOpen && (
+        <ProductPickerModal
+          products={products}
+          loading={productsLoading}
+          onClose={closeModal}
+        />
+      )}
     </div>
   );
 }

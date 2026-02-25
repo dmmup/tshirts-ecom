@@ -142,19 +142,32 @@ export async function removeCartItem(itemId) {
 }
 
 // ── Create Stripe PaymentIntent ──────────────────────────────
-export async function createPaymentIntent({ anonymousId, shipping, accessToken }) {
+export async function createPaymentIntent({ anonymousId, shipping, accessToken, promoCode }) {
   const headers = { 'Content-Type': 'application/json' };
   if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
   const res = await fetch(`${API_BASE}/checkout/create-payment-intent`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ anonymousId, shipping }),
+    body: JSON.stringify({ anonymousId, shipping, promoCode }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || 'Could not create payment intent');
   }
-  return res.json(); // { clientSecret, totalCents, cartId }
+  return res.json(); // { clientSecret, totalCents, subtotalCents, discountCents, cartId }
+}
+
+export async function validatePromoCode(code, subtotalCents) {
+  const res = await fetch(`${API_BASE}/checkout/validate-promo`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code, subtotalCents }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Invalid promo code');
+  }
+  return res.json(); // { valid, code, discountCents, discountType, discountValue }
 }
 
 // ── Fetch related products (same category, excluding current) ─
@@ -199,4 +212,37 @@ export async function fetchCategoryProducts(slug) {
   const res = await fetch(`${API_BASE}/categories/${encodeURIComponent(slug)}/products`);
   if (!res.ok) throw new Error(`Could not fetch products for category: ${slug}`);
   return res.json(); // { category, products: [...] }
+}
+
+// ── Wishlist ─────────────────────────────────────────────────
+export async function fetchWishlist(accessToken) {
+  const res = await fetch(`${API_BASE}/account/wishlist`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) return [];
+  return res.json(); // [{ productId, name, slug, price, thumbnailUrl, addedAt }]
+}
+
+export async function addToWishlist(productId, accessToken) {
+  const res = await fetch(`${API_BASE}/account/wishlist/${productId}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Could not add to wishlist');
+  }
+  return res.json();
+}
+
+export async function removeFromWishlist(productId, accessToken) {
+  const res = await fetch(`${API_BASE}/account/wishlist/${productId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Could not remove from wishlist');
+  }
+  return res.json();
 }

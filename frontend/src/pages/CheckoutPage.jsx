@@ -1,6 +1,7 @@
 // src/pages/CheckoutPage.jsx
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import {
   Elements,
   PaymentElement,
@@ -8,7 +9,7 @@ import {
   useElements,
 } from '@stripe/react-stripe-js';
 import { stripePromise } from '../lib/stripe';
-import { fetchCart, createPaymentIntent } from '../api/products';
+import { fetchCart, createPaymentIntent, validatePromoCode } from '../api/products';
 import { useAuth } from '../context/AuthContext';
 
 const API = import.meta.env.VITE_API_URL || '/api';
@@ -23,7 +24,10 @@ function formatPrice(cents) {
 }
 
 // ── Order Summary Sidebar ────────────────────────────────────
-function OrderSummary({ items, totalCents }) {
+function OrderSummary({
+  items, subtotalCents, discountCents, totalCents,
+  appliedPromo, promoInput, setPromoInput, onApply, onRemove, promoLoading, promoError,
+}) {
   const itemCount = items.reduce((a, i) => a + i.quantity, 0);
 
   return (
@@ -60,8 +64,14 @@ function OrderSummary({ items, totalCents }) {
       <div className="border-t border-slate-200 pt-4 space-y-2 text-sm">
         <div className="flex justify-between text-slate-600">
           <span>Subtotal ({itemCount} {itemCount === 1 ? 'item' : 'items'})</span>
-          <span className="font-semibold text-slate-800">{formatPrice(totalCents)}</span>
+          <span className="font-semibold text-slate-800">{formatPrice(subtotalCents)}</span>
         </div>
+        {discountCents > 0 && (
+          <div className="flex justify-between text-green-700">
+            <span>Promo ({appliedPromo?.code})</span>
+            <span className="font-semibold">−{formatPrice(discountCents)}</span>
+          </div>
+        )}
         <div className="flex justify-between text-slate-600">
           <span>Shipping</span>
           <span className="text-green-600 font-medium">Free</span>
@@ -70,6 +80,45 @@ function OrderSummary({ items, totalCents }) {
           <span>Total</span>
           <span>{formatPrice(totalCents)}</span>
         </div>
+      </div>
+
+      {/* Promo code input */}
+      <div className="border-t border-slate-200 pt-4">
+        {appliedPromo ? (
+          <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-3 py-2.5">
+            <span className="text-sm text-green-700 font-medium">
+              {appliedPromo.code} applied
+            </span>
+            <button
+              onClick={onRemove}
+              disabled={promoLoading}
+              className="text-xs text-red-500 hover:text-red-700 font-medium ml-2 disabled:opacity-50"
+            >
+              {promoLoading ? '…' : 'Remove'}
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-1.5">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={promoInput}
+                onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+                onKeyDown={(e) => e.key === 'Enter' && onApply()}
+                placeholder="Promo code"
+                className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition uppercase"
+              />
+              <button
+                onClick={onApply}
+                disabled={promoLoading || !promoInput.trim()}
+                className="px-4 py-2 bg-slate-800 text-white text-sm font-semibold rounded-xl hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition whitespace-nowrap"
+              >
+                {promoLoading ? '…' : 'Apply'}
+              </button>
+            </div>
+            {promoError && <p className="text-xs text-red-600">{promoError}</p>}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -230,6 +279,8 @@ export default function CheckoutPage() {
 
   const [items, setItems] = useState([]);
   const [clientSecret, setClientSecret] = useState(null);
+  const [subtotalCents, setSubtotalCents] = useState(0);
+  const [discountCents, setDiscountCents] = useState(0);
   const [totalCents, setTotalCents] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -237,6 +288,10 @@ export default function CheckoutPage() {
     name: '', email: '', line1: '', line2: '',
     city: '', state: '', postal_code: '', country: 'US',
   });
+  const [promoInput, setPromoInput] = useState('');
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoError, setPromoError] = useState(null);
+  const [appliedPromo, setAppliedPromo] = useState(null);
 
   const anonymousId = getAnonymousId();
 
@@ -279,11 +334,12 @@ export default function CheckoutPage() {
       setItems(fetched);
 
       // Create PaymentIntent (pass JWT if logged in)
-      const { clientSecret: cs, totalCents: total } = await createPaymentIntent({
+      const { clientSecret: cs, totalCents: total, subtotalCents: sub } = await createPaymentIntent({
         anonymousId,
         accessToken: session?.access_token,
       });
       setClientSecret(cs);
+      setSubtotalCents(sub || total);
       setTotalCents(total);
     } catch (err) {
       setError(err.message);
@@ -295,6 +351,52 @@ export default function CheckoutPage() {
   useEffect(() => {
     bootstrap();
   }, [bootstrap]);
+
+  async function handleApplyPromo() {
+    if (!promoInput.trim()) return;
+    setPromoLoading(true);
+    setPromoError(null);
+    try {
+      // Validate the code
+      const result = await validatePromoCode(promoInput.trim(), subtotalCents);
+      // Update the PaymentIntent with the discount applied
+      const { totalCents: newTotal, discountCents: dc } = await createPaymentIntent({
+        anonymousId,
+        promoCode: result.code,
+        accessToken: session?.access_token,
+      });
+      setDiscountCents(dc);
+      setTotalCents(newTotal);
+      setAppliedPromo(result);
+    } catch (err) {
+      setPromoError(err.message);
+    } finally {
+      setPromoLoading(false);
+    }
+  }
+
+  async function handleRemovePromo() {
+    setPromoLoading(true);
+    try {
+      const { totalCents: original } = await createPaymentIntent({
+        anonymousId,
+        accessToken: session?.access_token,
+      });
+      setDiscountCents(0);
+      setTotalCents(original);
+      setAppliedPromo(null);
+      setPromoInput('');
+      setPromoError(null);
+    } catch {
+      // silent — the promo state is reset optimistically
+      setDiscountCents(0);
+      setTotalCents(subtotalCents);
+      setAppliedPromo(null);
+      setPromoInput('');
+    } finally {
+      setPromoLoading(false);
+    }
+  }
 
   if (!stripePromise) {
     return (
@@ -317,6 +419,10 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <Helmet>
+        <title>Secure Checkout | PrintShop</title>
+        <meta name="robots" content="noindex" />
+      </Helmet>
       {/* Top bar */}
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-sm border-b border-slate-100">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
@@ -407,7 +513,19 @@ export default function CheckoutPage() {
 
             {/* Right: order summary */}
             <div className="lg:sticky lg:top-24">
-              <OrderSummary items={items} totalCents={totalCents} />
+              <OrderSummary
+                items={items}
+                subtotalCents={subtotalCents}
+                discountCents={discountCents}
+                totalCents={totalCents}
+                appliedPromo={appliedPromo}
+                promoInput={promoInput}
+                setPromoInput={setPromoInput}
+                onApply={handleApplyPromo}
+                onRemove={handleRemovePromo}
+                promoLoading={promoLoading}
+                promoError={promoError}
+              />
             </div>
           </div>
         )}

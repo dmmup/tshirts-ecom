@@ -1,6 +1,7 @@
 // src/pages/OrderConfirmationPage.jsx
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { stripePromise } from '../lib/stripe';
 
 function formatPrice(cents) {
@@ -46,6 +47,10 @@ export default function OrderConfirmationPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <Helmet>
+        <title>Order Confirmed | PrintShop</title>
+        <meta name="robots" content="noindex" />
+      </Helmet>
       {/* Top bar */}
       <header className="bg-white border-b border-slate-100">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center">
