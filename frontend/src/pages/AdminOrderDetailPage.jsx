@@ -306,18 +306,45 @@ export default function AdminOrderDetailPage() {
                             </div>
                           </td>
 
-                          {/* Design preview */}
+                          {/* Design preview + download */}
                           <td className="px-6 py-4">
-                            {designPreview ? (
-                              <img
-                                src={designPreview}
-                                alt="Design"
-                                className="w-10 h-10 rounded object-contain bg-slate-50 border border-slate-200"
-                                onError={(e) => { e.target.style.display = 'none'; }}
-                              />
-                            ) : (
-                              <span className="text-xs text-slate-400">—</span>
-                            )}
+                            <div className="flex flex-col gap-1.5">
+                              {designPreview && (
+                                <img
+                                  src={designPreview}
+                                  alt="Design"
+                                  className="w-10 h-10 rounded object-contain bg-slate-50 border border-slate-200"
+                                  onError={(e) => { e.target.style.display = 'none'; }}
+                                />
+                              )}
+                              {item.frontDesignSignedUrl && (
+                                <a
+                                  href={item.frontDesignSignedUrl}
+                                  download
+                                  className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+                                >
+                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                  </svg>
+                                  {t('admin.orderDetail.items.downloadFront')}
+                                </a>
+                              )}
+                              {item.backDesignSignedUrl && (
+                                <a
+                                  href={item.backDesignSignedUrl}
+                                  download
+                                  className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+                                >
+                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                  </svg>
+                                  {t('admin.orderDetail.items.downloadBack')}
+                                </a>
+                              )}
+                              {!designPreview && !item.frontDesignSignedUrl && !item.backDesignSignedUrl && (
+                                <span className="text-xs text-slate-400">—</span>
+                              )}
+                            </div>
                           </td>
 
                           <td className="px-6 py-4 text-center text-slate-700 font-medium">

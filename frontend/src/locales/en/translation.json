@@ -608,7 +608,9 @@
           "unit": "Unit",
           "total": "Total"
         },
-        "orderTotal": "Order total"
+        "orderTotal": "Order total",
+        "downloadFront": "Front design",
+        "downloadBack": "Back design"
       }
     },
     "products": {

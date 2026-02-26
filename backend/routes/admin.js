@@ -261,7 +261,19 @@ router.get('/orders/:id', requireAdmin, async (req, res) => {
           thumbnailUrl = fallback?.[0]?.url || null;
         }
 
-        return { ...item, variant, product: product || null, thumbnailUrl };
+        // Generate signed download URLs for uploaded design files
+        async function signDesignUrl(storagePath) {
+          if (!storagePath) return null;
+          const { data } = await supabaseAdmin.storage
+            .from('designs')
+            .createSignedUrl(storagePath, 60 * 60); // 1 hour
+          return data?.signedUrl || null;
+        }
+
+        const frontDesignSignedUrl = await signDesignUrl(item.config?.front?.design_url);
+        const backDesignSignedUrl  = await signDesignUrl(item.config?.back?.design_url);
+
+        return { ...item, variant, product: product || null, thumbnailUrl, frontDesignSignedUrl, backDesignSignedUrl };
       })
     );
 

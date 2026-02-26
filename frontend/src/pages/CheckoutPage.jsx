@@ -165,7 +165,7 @@ function ShippingForm({ value, onChange }) {
 }
 
 // ── Inner Payment Form (must be inside <Elements>) ───────────
-function PaymentForm({ totalCents, shipping, onShippingChange, items, clientSecret }) {
+function PaymentForm({ totalCents, shipping, onShippingChange, items, clientSecret, anonymousId, accessToken }) {
   const { t } = useTranslation();
   const stripe = useStripe();
   const elements = useElements();
@@ -189,6 +189,13 @@ function PaymentForm({ totalCents, shipping, onShippingChange, items, clientSecr
 
     setSubmitting(true);
     setPayError(null);
+
+    // Save shipping address to our DB before confirming payment
+    try {
+      await createPaymentIntent({ anonymousId, shipping, accessToken });
+    } catch (_) {
+      // non-fatal — proceed anyway
+    }
 
     const { error, paymentIntent } = await stripe.confirmPayment({
       elements,
@@ -517,6 +524,8 @@ export default function CheckoutPage() {
                   onShippingChange={setShipping}
                   items={items}
                   clientSecret={clientSecret}
+                  anonymousId={anonymousId}
+                  accessToken={session?.access_token}
                 />
               </Elements>
             </div>
