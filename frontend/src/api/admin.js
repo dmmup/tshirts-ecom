@@ -54,6 +54,14 @@ export async function fetchAdminOrder(id) {
   return handleResponse(res); // { order, items }
 }
 
+// ── DELETE /api/admin/orders/:id ─────────────────────────────
+export async function deleteOrder(id) {
+  const res = await fetch(`${API_BASE}/admin/orders/${id}`, {
+    method: 'DELETE', headers: authHeaders(),
+  });
+  return handleResponse(res); // { success }
+}
+
 // ── PATCH /api/admin/orders/:id/status ───────────────────────
 export async function updateOrderStatus(id, status) {
   const res = await fetch(`${API_BASE}/admin/orders/${id}/status`, {

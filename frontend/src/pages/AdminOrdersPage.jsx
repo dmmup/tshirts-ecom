@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { fetchAdminOrders } from '../api/admin';
+import { fetchAdminOrders, deleteOrder } from '../api/admin';
 import { AdminTopBar } from './AdminProductsPage';
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -54,6 +54,8 @@ export default function AdminOrdersPage() {
   const [data, setData] = useState(null); // { stats, orders, total }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [deletingId, setDeletingId] = useState(null); // id pending confirm
+  const [deleting, setDeleting] = useState(false);
 
   const filterTabs = [
     { label: t('admin.orders.filters.all'),       value: '' },
@@ -92,6 +94,20 @@ export default function AdminOrdersPage() {
   const handleLogout = () => {
     sessionStorage.removeItem('admin_token');
     navigate('/admin', { replace: true });
+  };
+
+  const handleDelete = async (id) => {
+    setDeleting(true);
+    try {
+      await deleteOrder(id);
+      setData((prev) => prev ? { ...prev, orders: prev.orders.filter((o) => o.id !== id), total: prev.total - 1 } : prev);
+      setDeletingId(null);
+    } catch (err) {
+      if (err.status === 401) { sessionStorage.removeItem('admin_token'); navigate('/admin', { replace: true }); }
+      else setError(err.message);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const setFilter = (val) => {
@@ -184,7 +200,7 @@ export default function AdminOrdersPage() {
                   <tr
                     key={order.id}
                     className="hover:bg-slate-50 transition-colors cursor-pointer"
-                    onClick={() => navigate(`/admin/orders/${order.id}`)}
+                    onClick={() => deletingId !== order.id && navigate(`/admin/orders/${order.id}`)}
                   >
                     <td className="px-6 py-4 text-slate-500 whitespace-nowrap text-xs">
                       {formatDate(order.created_at)}
@@ -202,10 +218,37 @@ export default function AdminOrdersPage() {
                     <td className="px-6 py-4">
                       <StatusBadge status={order.status} />
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <span className="text-indigo-600 font-semibold text-xs hover:underline">
-                        {t('admin.orders.table.view')}
-                      </span>
+                    <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                      {deletingId === order.id ? (
+                        <div className="flex items-center justify-end gap-2">
+                          <span className="text-xs text-slate-500">{t('admin.orders.delete.confirm')}</span>
+                          <button
+                            onClick={() => handleDelete(order.id)}
+                            disabled={deleting}
+                            className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
+                          >
+                            {t('admin.orders.delete.yes')}
+                          </button>
+                          <button
+                            onClick={() => setDeletingId(null)}
+                            className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-lg transition-colors"
+                          >
+                            {t('admin.orders.delete.cancel')}
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-end gap-3">
+                          <span className="text-indigo-600 font-semibold text-xs hover:underline">
+                            {t('admin.orders.table.view')}
+                          </span>
+                          <button
+                            onClick={() => setDeletingId(order.id)}
+                            className="text-slate-400 hover:text-red-500 text-xs font-semibold transition-colors"
+                          >
+                            {t('admin.orders.delete.button')}
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}

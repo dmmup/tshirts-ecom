@@ -584,9 +584,22 @@
         "view": "View →"
       },
       "empty": "No orders found",
-      "showing": "Showing {{shown}} of {{total}} orders"
+      "showing": "Showing {{shown}} of {{total}} orders",
+      "delete": {
+        "button": "Delete",
+        "confirm": "Delete this order?",
+        "yes": "Yes, delete",
+        "cancel": "Cancel"
+      }
     },
     "orderDetail": {
+      "delete": {
+        "button": "Delete order",
+        "confirm": "Permanently delete this order?",
+        "yes": "Yes, delete",
+        "cancel": "Cancel",
+        "deleting": "Deleting…"
+      },
       "backToOrders": "Orders",
       "orderNumber": "Order #{{id}}",
       "updateStatus": "Update status:",

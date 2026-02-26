@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { fetchAdminOrder, updateOrderStatus } from '../api/admin';
+import { fetchAdminOrder, updateOrderStatus, deleteOrder } from '../api/admin';
 import { AdminTopBar } from './AdminProductsPage';
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -55,6 +55,8 @@ export default function AdminOrderDetailPage() {
   const [selectedStatus, setSelectedStatus] = useState('');
   const [updating, setUpdating] = useState(false);
   const [updateSuccess, setUpdateSuccess] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -110,6 +112,17 @@ export default function AdminOrderDetailPage() {
     }
   };
 
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await deleteOrder(id);
+      navigate('/admin/orders', { replace: true });
+    } catch (err) {
+      if (err.status === 401) { sessionStorage.removeItem('admin_token'); navigate('/admin', { replace: true }); }
+      else { setError(err.message); setDeleting(false); setConfirmDelete(false); }
+    }
+  };
+
   const shortId = id?.slice(0, 8).toUpperCase();
 
   if (loading) {
@@ -140,9 +153,38 @@ export default function AdminOrderDetailPage() {
             {t('admin.orderDetail.backToOrders')}
           </Link>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-bold text-slate-900">{t('admin.orderDetail.orderNumber', { id: shortId })}</h1>
-            {order && <StatusBadge status={order.status} />}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-2xl font-bold text-slate-900">{t('admin.orderDetail.orderNumber', { id: shortId })}</h1>
+              {order && <StatusBadge status={order.status} />}
+            </div>
+            {order && (
+              confirmDelete ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-500">{t('admin.orderDetail.delete.confirm')}</span>
+                  <button
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {deleting ? t('admin.orderDetail.delete.deleting') : t('admin.orderDetail.delete.yes')}
+                  </button>
+                  <button
+                    onClick={() => setConfirmDelete(false)}
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-lg transition-colors"
+                  >
+                    {t('admin.orderDetail.delete.cancel')}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmDelete(true)}
+                  className="px-3 py-1.5 border border-red-200 text-red-500 hover:bg-red-50 hover:border-red-300 text-xs font-semibold rounded-lg transition-colors"
+                >
+                  {t('admin.orderDetail.delete.button')}
+                </button>
+              )
+            )}
           </div>
           {order && (
             <p className="text-sm text-slate-500 mt-1">{formatDate(order.created_at)}</p>

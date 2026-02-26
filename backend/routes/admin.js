@@ -321,6 +321,22 @@ router.patch('/orders/:id/status', requireAdmin, async (req, res) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────
+// DELETE /api/admin/orders/:id
+// ─────────────────────────────────────────────────────────────
+router.delete('/orders/:id', requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  try {
+    await supabaseAdmin.from('order_items').delete().eq('order_id', id);
+    const { error } = await supabaseAdmin.from('orders').delete().eq('id', id);
+    if (error) return res.status(500).json({ error: 'Could not delete order' });
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('[admin/orders DELETE]', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // ═════════════════════════════════════════════════════════════
 // PRODUCT MANAGEMENT
 // ═════════════════════════════════════════════════════════════

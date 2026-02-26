@@ -584,9 +584,22 @@
         "view": "Ver →"
       },
       "empty": "No se encontraron pedidos",
-      "showing": "Mostrando {{shown}} de {{total}} pedidos"
+      "showing": "Mostrando {{shown}} de {{total}} pedidos",
+      "delete": {
+        "button": "Eliminar",
+        "confirm": "¿Eliminar este pedido?",
+        "yes": "Sí, eliminar",
+        "cancel": "Cancelar"
+      }
     },
     "orderDetail": {
+      "delete": {
+        "button": "Eliminar pedido",
+        "confirm": "¿Eliminar este pedido permanentemente?",
+        "yes": "Sí, eliminar",
+        "cancel": "Cancelar",
+        "deleting": "Eliminando…"
+      },
       "backToOrders": "Pedidos",
       "orderNumber": "Pedido #{{id}}",
       "updateStatus": "Actualizar estado:",
