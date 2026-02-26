@@ -32,6 +32,56 @@ function StatusBadge({ status }) {
   );
 }
 
+// ── Design placement mini-preview ─────────────────────────────
+// Renders a shirt mockup with the design overlaid at the saved placement.
+function DesignPlacementMini({ mockupUrl, designViewUrl, placement, label, downloadUrl }) {
+  const hasOverlay = designViewUrl && placement;
+  return (
+    <div className="flex flex-col gap-1">
+      {label && <span className="text-xs font-medium text-slate-400 uppercase tracking-wide">{label}</span>}
+      <div className="relative w-28 h-32 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 flex-shrink-0">
+        {mockupUrl && (
+          <img src={mockupUrl} alt="" className="absolute inset-0 w-full h-full object-contain" draggable={false} />
+        )}
+        {hasOverlay && (
+          <div
+            className="absolute pointer-events-none"
+            style={{
+              left:      `${placement.x * 100}%`,
+              top:       `${placement.y * 100}%`,
+              width:     `${placement.wPct * 100}%`,
+              transform: `translate(-50%,-50%) rotate(${placement.rotation || 0}deg) scaleX(${placement.flipped ? -1 : 1})`,
+            }}
+          >
+            <img
+              src={designViewUrl}
+              alt="design"
+              className="w-full"
+              style={{ opacity: 0.92, filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.28))' }}
+              draggable={false}
+            />
+          </div>
+        )}
+        {!mockupUrl && !hasOverlay && (
+          <div className="absolute inset-0 flex items-center justify-center text-slate-300 text-xs">—</div>
+        )}
+      </div>
+      {downloadUrl && (
+        <a
+          href={downloadUrl}
+          download
+          className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          Download
+        </a>
+      )}
+    </div>
+  );
+}
+
 // ── Info card ─────────────────────────────────────────────────
 function InfoCard({ title, children }) {
   return (
@@ -301,10 +351,6 @@ export default function AdminOrderDetailPage() {
                       const decorLabel = item.config?.decoration
                         ? t(`product.decoration.${item.config.decoration}`, { defaultValue: item.config.decoration })
                         : '—';
-                      const designPreview = item.config?.design_preview_url
-                        || item.config?.front?.design_preview_url
-                        || item.config?.back?.design_preview_url
-                        || null;
 
                       return (
                         <tr key={item.id} className="hover:bg-slate-50 transition-colors">
@@ -348,42 +394,28 @@ export default function AdminOrderDetailPage() {
                             </div>
                           </td>
 
-                          {/* Design preview + download */}
+                          {/* Design placement preview + download */}
                           <td className="px-6 py-4">
-                            <div className="flex flex-col gap-1.5">
-                              {designPreview && (
-                                <img
-                                  src={designPreview}
-                                  alt="Design"
-                                  className="w-10 h-10 rounded object-contain bg-slate-50 border border-slate-200"
-                                  onError={(e) => { e.target.style.display = 'none'; }}
+                            <div className="flex gap-3 flex-wrap">
+                              {item.frontDesignViewUrl ? (
+                                <DesignPlacementMini
+                                  mockupUrl={item.thumbnailUrl}
+                                  designViewUrl={item.frontDesignViewUrl}
+                                  placement={item.config?.front?.placement}
+                                  label={item.backDesignViewUrl ? t('admin.orderDetail.items.downloadFront') : null}
+                                  downloadUrl={item.frontDesignSignedUrl}
                                 />
-                              )}
-                              {item.frontDesignSignedUrl && (
-                                <a
-                                  href={item.frontDesignSignedUrl}
-                                  download
-                                  className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700 font-medium"
-                                >
-                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                  </svg>
-                                  {t('admin.orderDetail.items.downloadFront')}
-                                </a>
-                              )}
-                              {item.backDesignSignedUrl && (
-                                <a
-                                  href={item.backDesignSignedUrl}
-                                  download
-                                  className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700 font-medium"
-                                >
-                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                  </svg>
-                                  {t('admin.orderDetail.items.downloadBack')}
-                                </a>
-                              )}
-                              {!designPreview && !item.frontDesignSignedUrl && !item.backDesignSignedUrl && (
+                              ) : null}
+                              {item.backDesignViewUrl ? (
+                                <DesignPlacementMini
+                                  mockupUrl={item.backThumbnailUrl}
+                                  designViewUrl={item.backDesignViewUrl}
+                                  placement={item.config?.back?.placement}
+                                  label={t('admin.orderDetail.items.downloadBack')}
+                                  downloadUrl={item.backDesignSignedUrl}
+                                />
+                              ) : null}
+                              {!item.frontDesignViewUrl && !item.backDesignViewUrl && (
                                 <span className="text-xs text-slate-400">—</span>
                               )}
                             </div>

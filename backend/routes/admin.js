@@ -261,23 +261,56 @@ router.get('/orders/:id', requireAdmin, async (req, res) => {
           thumbnailUrl = fallback?.[0]?.url || null;
         }
 
-        // Generate signed download URLs for uploaded design files.
-        // The { download: filename } option forces Content-Disposition: attachment
-        // so browsers download the file instead of displaying it in a new tab.
+        // Fetch back mockup for the same color
+        let backThumbnailUrl = null;
+        const { data: backImages } = await supabaseAdmin
+          .from('product_images')
+          .select('url')
+          .eq('product_id', variant.product_id)
+          .eq('angle', 'back')
+          .eq('color_name', colorName)
+          .limit(1);
+        backThumbnailUrl = backImages?.[0]?.url || null;
+        if (!backThumbnailUrl) {
+          const { data: backFallback } = await supabaseAdmin
+            .from('product_images')
+            .select('url')
+            .eq('product_id', variant.product_id)
+            .eq('angle', 'back')
+            .limit(1);
+          backThumbnailUrl = backFallback?.[0]?.url || thumbnailUrl;
+        }
+
+        // Signed download URLs (Content-Disposition: attachment)
         async function signDesignUrl(storagePath) {
           if (!storagePath) return null;
-          // Extract original filename from path: "{ownerId}/{timestamp}_{filename}"
           const rawName = storagePath.split('/').pop().replace(/^\d+_/, '') || 'design';
           const { data } = await supabaseAdmin.storage
             .from('designs')
-            .createSignedUrl(storagePath, 60 * 60, { download: rawName }); // 1 hour
+            .createSignedUrl(storagePath, 60 * 60, { download: rawName });
+          return data?.signedUrl || null;
+        }
+
+        // Signed view URLs (inline display for <img> in admin)
+        async function signDesignViewUrl(storagePath) {
+          if (!storagePath) return null;
+          const { data } = await supabaseAdmin.storage
+            .from('designs')
+            .createSignedUrl(storagePath, 60 * 60);
           return data?.signedUrl || null;
         }
 
         const frontDesignSignedUrl = await signDesignUrl(item.config?.front?.design_url);
         const backDesignSignedUrl  = await signDesignUrl(item.config?.back?.design_url);
+        const frontDesignViewUrl   = await signDesignViewUrl(item.config?.front?.design_url);
+        const backDesignViewUrl    = await signDesignViewUrl(item.config?.back?.design_url);
 
-        return { ...item, variant, product: product || null, thumbnailUrl, frontDesignSignedUrl, backDesignSignedUrl };
+        return {
+          ...item, variant, product: product || null,
+          thumbnailUrl, backThumbnailUrl,
+          frontDesignSignedUrl, backDesignSignedUrl,
+          frontDesignViewUrl, backDesignViewUrl,
+        };
       })
     );
 
