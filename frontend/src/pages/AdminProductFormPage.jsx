@@ -2,6 +2,7 @@
 // Used for both /admin/products/new and /admin/products/:id
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   fetchAdminProduct, createProduct, updateProduct,
   bulkCreateVariants, deleteVariant, updateVariantStock,
@@ -48,6 +49,7 @@ const inputCls = "px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-
 
 // ── Page ──────────────────────────────────────────────────────
 export default function AdminProductFormPage() {
+  const { t } = useTranslation();
   const { id } = useParams(); // undefined for /new
   const navigate = useNavigate();
   const isNew = !id;
@@ -147,7 +149,6 @@ export default function AdminProductFormPage() {
       if (isNew && !savedProduct) {
         result = await createProduct({ name: name.trim(), slug: slug.trim(), description: description.trim() || null, category_id: categoryId || null });
         setSavedProduct(result);
-        // Update URL to edit page without full navigation
         window.history.replaceState(null, '', `/admin/products/${result.id}`);
       } else {
         result = await updateProduct(productId, { name: name.trim(), slug: slug.trim(), description: description.trim() || null, category_id: categoryId || null });
@@ -174,7 +175,7 @@ export default function AdminProductFormPage() {
   // ── Generate variants ─────────────────────────────────────
   const handleGenerateVariants = async () => {
     if (!pendingColors.length || !selectedSizes.length || !variantPrice) {
-      setVariantError('Add at least one color, one size, and a price.');
+      setVariantError(t('admin.productForm.variantError'));
       return;
     }
     setGeneratingVariants(true);
@@ -213,7 +214,6 @@ export default function AdminProductFormPage() {
   };
 
   // ── Update variant stock ──────────────────────────────────
-  // stockValue: '' (unlimited) | '0' (OOS) | positive string
   const handleUpdateVariantStock = async (variantId, stockValue) => {
     const stock = stockValue === '' ? null : parseInt(stockValue, 10);
     try {
@@ -236,14 +236,12 @@ export default function AdminProductFormPage() {
       let finalUrl = newImageUrl.trim();
 
       if (imageMode === 'file') {
-        // 1. Get signed upload URL from backend
         const { signedUrl, publicUrl } = await signProductImageUpload({
           productId,
           filename: selectedFile.name,
           contentType: selectedFile.type,
         });
 
-        // 2. Upload directly to Supabase Storage via XHR (with progress)
         await new Promise((resolve, reject) => {
           const xhr = new XMLHttpRequest();
           xhr.open('PUT', signedUrl);
@@ -302,18 +300,18 @@ export default function AdminProductFormPage() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            Products
+            {t('admin.products.heading')}
           </Link>
           <h1 className="text-2xl font-bold text-slate-900">
-            {isNew && !savedProduct ? 'New product' : name || 'Edit product'}
+            {isNew && !savedProduct ? t('admin.productForm.headingNew') : name || t('admin.productForm.headingEdit')}
           </h1>
         </div>
 
         {/* ── Section 1: Basic Info ── */}
-        <Section title="Basic info">
+        <Section title={t('admin.productForm.sections.basicInfo')}>
           <form onSubmit={handleSave} className="flex flex-col gap-4">
             <div className="grid sm:grid-cols-2 gap-4">
-              <Field label="Product name *">
+              <Field label={t('admin.productForm.fields.productName')}>
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -322,7 +320,7 @@ export default function AdminProductFormPage() {
                   className={inputCls}
                 />
               </Field>
-              <Field label="Slug (URL)">
+              <Field label={t('admin.productForm.fields.slug')}>
                 <input
                   value={slug}
                   onChange={(e) => setSlug(e.target.value)}
@@ -331,7 +329,7 @@ export default function AdminProductFormPage() {
                 />
               </Field>
             </div>
-            <Field label="Description">
+            <Field label={t('admin.productForm.fields.description')}>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -340,13 +338,13 @@ export default function AdminProductFormPage() {
                 className={`${inputCls} resize-none`}
               />
             </Field>
-            <Field label="Category">
+            <Field label={t('admin.productForm.fields.category')}>
               <select
                 value={categoryId}
                 onChange={(e) => setCategoryId(e.target.value)}
                 className={inputCls}
               >
-                <option value="">— No category —</option>
+                <option value="">{t('admin.productForm.fields.categoryNone')}</option>
                 {categories.map((cat) => (
                   <option key={cat.id} value={cat.id}>{cat.name}</option>
                 ))}
@@ -363,14 +361,18 @@ export default function AdminProductFormPage() {
                 disabled={saving || !name.trim()}
                 className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white font-semibold rounded-xl text-sm transition-colors"
               >
-                {saving ? 'Saving…' : savedProduct ? 'Save changes' : 'Create product'}
+                {saving
+                  ? t('admin.productForm.saving')
+                  : savedProduct
+                  ? t('admin.productForm.saveChanges')
+                  : t('admin.productForm.createProduct')}
               </button>
               {saveSuccess && (
                 <span className="text-sm text-green-600 font-medium flex items-center gap-1">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  Saved
+                  {t('admin.productForm.saved')}
                 </span>
               )}
             </div>
@@ -380,12 +382,12 @@ export default function AdminProductFormPage() {
         {/* ── Section 2: Variants ── (only after product saved) */}
         {productId && (
           <Section
-            title="Variants"
-            subtitle="Generate all color × size combinations at once."
+            title={t('admin.productForm.sections.variants')}
+            subtitle={t('admin.productForm.sections.variantsSub')}
           >
             {/* Color builder */}
             <div className="flex flex-col gap-3">
-              <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Colors to add</p>
+              <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">{t('admin.productForm.fields.colorsToAdd')}</p>
 
               {/* Pending color pills */}
               {pendingColors.length > 0 && (
@@ -430,14 +432,14 @@ export default function AdminProductFormPage() {
                   disabled={!newColorName.trim()}
                   className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-sm transition-colors disabled:opacity-40"
                 >
-                  Add
+                  {t('admin.productForm.fields.addColor')}
                 </button>
               </div>
             </div>
 
             {/* Size checkboxes */}
             <div className="flex flex-col gap-2">
-              <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Sizes</p>
+              <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">{t('admin.productForm.fields.sizes')}</p>
               <div className="flex flex-wrap gap-2">
                 {SIZE_OPTIONS.map((size) => (
                   <label key={size} className="flex items-center gap-1.5 cursor-pointer">
@@ -459,7 +461,7 @@ export default function AdminProductFormPage() {
 
             {/* Price + SKU prefix */}
             <div className="flex flex-wrap gap-4">
-              <Field label="Price ($)">
+              <Field label={t('admin.productForm.fields.price')}>
                 <input
                   type="number"
                   min="0"
@@ -470,7 +472,7 @@ export default function AdminProductFormPage() {
                   className={`${inputCls} w-36`}
                 />
               </Field>
-              <Field label="SKU prefix (optional)">
+              <Field label={t('admin.productForm.fields.skuPrefix')}>
                 <input
                   value={skuPrefix}
                   onChange={(e) => setSkuPrefix(e.target.value.toUpperCase())}
@@ -487,15 +489,15 @@ export default function AdminProductFormPage() {
             {/* Checklist of what's still needed */}
             {(!pendingColors.length || !selectedSizes.length || !variantPrice) && (
               <div className="flex flex-col gap-1 text-xs text-slate-500">
-                <p className="font-semibold text-slate-600 mb-0.5">To unlock "Generate variants":</p>
+                <p className="font-semibold text-slate-600 mb-0.5">{t('admin.productForm.checklist.heading')}</p>
                 <span className={pendingColors.length ? 'text-green-600' : ''}>
-                  {pendingColors.length ? '✓' : '○'} Add at least one color (type name + pick color → click <strong>Add</strong>)
+                  {pendingColors.length ? '✓' : '○'} {t('admin.productForm.checklist.addColor')}
                 </span>
                 <span className={selectedSizes.length ? 'text-green-600' : ''}>
-                  {selectedSizes.length ? '✓' : '○'} Select at least one size
+                  {selectedSizes.length ? '✓' : '○'} {t('admin.productForm.checklist.addSize')}
                 </span>
                 <span className={variantPrice ? 'text-green-600' : ''}>
-                  {variantPrice ? '✓' : '○'} Enter a price
+                  {variantPrice ? '✓' : '○'} {t('admin.productForm.checklist.addPrice')}
                 </span>
               </div>
             )}
@@ -506,7 +508,9 @@ export default function AdminProductFormPage() {
               disabled={generatingVariants || !pendingColors.length || !selectedSizes.length || !variantPrice}
               className="self-start px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 disabled:cursor-not-allowed text-white font-semibold rounded-xl text-sm transition-colors"
             >
-              {generatingVariants ? 'Generating…' : `Generate ${pendingColors.length * selectedSizes.length || 0} variants`}
+              {generatingVariants
+                ? t('admin.productForm.fields.generating')
+                : t('admin.productForm.fields.generateVariantsLabel', { count: pendingColors.length * selectedSizes.length || 0 })}
             </button>
 
             {/* Existing variants table */}
@@ -515,11 +519,11 @@ export default function AdminProductFormPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-200">
-                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Color</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Size</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Price</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">SKU</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide" title="Leave blank for unlimited stock">Stock</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">{t('admin.productForm.variantTable.color')}</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">{t('admin.productForm.variantTable.size')}</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">{t('admin.productForm.variantTable.price')}</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">{t('admin.productForm.variantTable.sku')}</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide" title="Leave blank for unlimited stock">{t('admin.productForm.variantTable.stock')}</th>
                       <th className="px-4 py-2.5" />
                     </tr>
                   </thead>
@@ -550,7 +554,7 @@ export default function AdminProductFormPage() {
                           <button
                             onClick={() => handleDeleteVariant(v.id)}
                             className="text-slate-300 hover:text-red-500 transition-colors"
-                            title="Delete variant"
+                            title={t('admin.productForm.deleteVariant')}
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -570,12 +574,15 @@ export default function AdminProductFormPage() {
         {/* ── Section 3: Images ── (only after product saved) */}
         {productId && (
           <Section
-            title="Images"
-            subtitle="Upload a file or paste a URL. Use angle 'front' for the main thumbnail."
+            title={t('admin.productForm.sections.images')}
+            subtitle={t('admin.productForm.sections.imagesSub')}
           >
             {/* Mode toggle */}
             <div className="flex gap-1 bg-slate-100 rounded-lg p-1 w-fit">
-              {[{ value: 'file', label: 'Upload file' }, { value: 'url', label: 'Paste URL' }].map((m) => (
+              {[
+                { value: 'file', label: t('admin.productForm.fields.uploadFile') },
+                { value: 'url', label: t('admin.productForm.fields.urlMode') },
+              ].map((m) => (
                 <button
                   key={m.value}
                   type="button"
@@ -599,13 +606,13 @@ export default function AdminProductFormPage() {
             {/* Add image row */}
             <div className="flex flex-wrap gap-3 items-end">
               {imageMode === 'file' ? (
-                <Field label="Image file *">
+                <Field label={t('admin.productForm.fields.imageFile')}>
                   <label className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border border-slate-200 border-dashed cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/40 transition-colors min-w-64 bg-slate-50">
                     <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                     </svg>
                     <span className="text-sm text-slate-500 truncate max-w-[200px]">
-                      {selectedFile ? selectedFile.name : 'Click to choose image…'}
+                      {selectedFile ? selectedFile.name : t('admin.productForm.fields.chooseImage')}
                     </span>
                     <input
                       type="file"
@@ -624,7 +631,7 @@ export default function AdminProductFormPage() {
                   )}
                 </Field>
               ) : (
-                <Field label="Image URL *">
+                <Field label={t('admin.productForm.fields.imageUrl')}>
                   <input
                     value={newImageUrl}
                     onChange={(e) => setNewImageUrl(e.target.value)}
@@ -633,19 +640,19 @@ export default function AdminProductFormPage() {
                   />
                 </Field>
               )}
-              <Field label="Color">
+              <Field label={t('admin.productForm.fields.imageColorLabel')}>
                 <select
                   value={newImageColor}
                   onChange={(e) => setNewImageColor(e.target.value)}
                   className={`${inputCls}`}
                 >
-                  <option value="">All colors</option>
+                  <option value="">{t('admin.productForm.fields.allColors')}</option>
                   {existingColors.map((c) => (
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
               </Field>
-              <Field label="Angle">
+              <Field label={t('admin.productForm.fields.imageAngle')}>
                 <select
                   value={newImageAngle}
                   onChange={(e) => setNewImageAngle(e.target.value)}
@@ -665,8 +672,8 @@ export default function AdminProductFormPage() {
                 {addingImage
                   ? (imageMode === 'file' && uploadProgress > 0 && uploadProgress < 100
                       ? `${uploadProgress}%`
-                      : 'Uploading…')
-                  : 'Add image'}
+                      : t('admin.productForm.uploading'))
+                  : t('admin.productForm.fields.addImage')}
               </button>
             </div>
 
@@ -680,10 +687,10 @@ export default function AdminProductFormPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-200">
-                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Preview</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Color</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Angle</th>
-                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">URL</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">{t('admin.productForm.imageTable.preview')}</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">{t('admin.productForm.imageTable.color')}</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">{t('admin.productForm.imageTable.angle')}</th>
+                      <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">{t('admin.productForm.imageTable.url')}</th>
                       <th className="px-4 py-2.5" />
                     </tr>
                   </thead>
@@ -698,7 +705,7 @@ export default function AdminProductFormPage() {
                             onError={(e) => { e.target.style.display = 'none'; }}
                           />
                         </td>
-                        <td className="px-4 py-2.5 text-slate-700">{img.color_name || <span className="text-slate-400">All</span>}</td>
+                        <td className="px-4 py-2.5 text-slate-700">{img.color_name || <span className="text-slate-400">{t('admin.productForm.fields.allColors')}</span>}</td>
                         <td className="px-4 py-2.5 capitalize text-slate-700">{img.angle}</td>
                         <td className="px-4 py-2.5 text-slate-400 text-xs font-mono max-w-xs truncate">
                           <a href={img.url} target="_blank" rel="noopener noreferrer" className="hover:text-indigo-600 hover:underline">
@@ -709,7 +716,7 @@ export default function AdminProductFormPage() {
                           <button
                             onClick={() => handleDeleteImage(img.id)}
                             className="text-slate-300 hover:text-red-500 transition-colors"
-                            title="Delete image"
+                            title={t('common.delete')}
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -726,14 +733,14 @@ export default function AdminProductFormPage() {
           </Section>
         )}
 
-        {/* Bottom save button */}
+        {/* Bottom done button */}
         {productId && (
           <div className="flex justify-end">
             <Link
               to="/admin/products"
               className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-sm transition-colors"
             >
-              Done
+              {t('admin.productForm.done')}
             </Link>
           </div>
         )}

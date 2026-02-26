@@ -1,9 +1,12 @@
 // src/pages/AdminLoginPage.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { verifyAdmin } from '../api/admin';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 
 export default function AdminLoginPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [secret, setSecret] = useState('');
   const [loading, setLoading] = useState(false);
@@ -27,7 +30,7 @@ export default function AdminLoginPage() {
       sessionStorage.setItem('admin_token', secret.trim());
       navigate('/admin/dashboard', { replace: true });
     } catch (err) {
-      setError('Incorrect password. Try again.');
+      setError(t('admin.login.incorrectPassword'));
       setLoading(false);
     }
   };
@@ -41,8 +44,11 @@ export default function AdminLoginPage() {
             Print<span className="text-indigo-600">Shop</span>
           </span>
           <p className="mt-1.5 text-sm font-semibold text-slate-500 uppercase tracking-widest">
-            Admin
+            {t('admin.login.title')}
           </p>
+          <div className="mt-2 flex justify-center">
+            <LanguageSwitcher />
+          </div>
         </div>
 
         <form
@@ -50,13 +56,13 @@ export default function AdminLoginPage() {
           className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 flex flex-col gap-5"
         >
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Dashboard login</h1>
-            <p className="text-sm text-slate-500 mt-1">Enter your admin password to continue.</p>
+            <h1 className="text-xl font-bold text-slate-900">{t('admin.login.heading')}</h1>
+            <p className="text-sm text-slate-500 mt-1">{t('admin.login.body')}</p>
           </div>
 
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
-              Password
+              {t('admin.login.passwordLabel')}
             </label>
             <input
               type="password"
@@ -86,10 +92,10 @@ export default function AdminLoginPage() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-                Checking…
+                {t('admin.login.checking')}
               </>
             ) : (
-              'Enter dashboard'
+              t('admin.login.submit')
             )}
           </button>
         </form>

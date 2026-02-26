@@ -1,6 +1,7 @@
 // src/pages/AdminCategoriesPage.jsx
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   fetchAdminCategories, createCategory, updateCategory,
   deleteCategory, signCategoryImageUpload,
@@ -14,8 +15,8 @@ function slugify(name) {
 const inputCls = "px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition";
 
 // ── Shared image upload field ─────────────────────────────────
-// Shows file picker + progress, or URL text input, with a toggle.
-function ImageField({ imageUrl, setImageUrl, label = 'Image' }) {
+function ImageField({ imageUrl, setImageUrl, label }) {
+  const { t } = useTranslation();
   const [mode, setMode] = useState(imageUrl ? 'url' : 'file');
   const [file, setFile] = useState(null);
   const [progress, setProgress] = useState(0);
@@ -63,7 +64,7 @@ function ImageField({ imageUrl, setImageUrl, label = 'Image' }) {
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between">
         <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
-          {label} <span className="normal-case font-normal text-slate-400">(optional)</span>
+          {label} <span className="normal-case font-normal text-slate-400">{t('admin.categories.image.optional')}</span>
         </label>
         <div className="flex gap-1 bg-slate-100 p-0.5 rounded-lg">
           {['file', 'url'].map((m) => (
@@ -75,7 +76,7 @@ function ImageField({ imageUrl, setImageUrl, label = 'Image' }) {
                 mode === m ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
               }`}
             >
-              {m === 'file' ? 'Upload' : 'URL'}
+              {m === 'file' ? t('admin.categories.image.upload') : t('admin.categories.image.url')}
             </button>
           ))}
         </div>
@@ -94,12 +95,12 @@ function ImageField({ imageUrl, setImageUrl, label = 'Image' }) {
             {uploading ? (
               <>
                 <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
-                <span className="text-slate-600">Uploading… {progress}%</span>
+                <span className="text-slate-600">{t('admin.categories.image.uploading', { percent: progress })}</span>
               </>
             ) : imageUrl && !file ? (
               <>
                 <img src={imageUrl} alt="" className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
-                <span className="text-slate-500 truncate text-xs">Image uploaded — click to replace</span>
+                <span className="text-slate-500 truncate text-xs">{t('admin.categories.image.clickToReplace')}</span>
               </>
             ) : file ? (
               <>
@@ -114,7 +115,7 @@ function ImageField({ imageUrl, setImageUrl, label = 'Image' }) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
                     d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                 </svg>
-                <span className="text-slate-400">Click to upload PNG, JPG, WebP</span>
+                <span className="text-slate-400">{t('admin.categories.image.clickToUpload')}</span>
               </>
             )}
           </div>
@@ -146,6 +147,7 @@ function ImageField({ imageUrl, setImageUrl, label = 'Image' }) {
 
 // ── Inline edit row ───────────────────────────────────────────
 function EditRow({ cat, onSave, onCancel }) {
+  const { t } = useTranslation();
   const [name, setName] = useState(cat.name);
   const [slug, setSlug] = useState(cat.slug);
   const [imageUrl, setImageUrl] = useState(cat.image_url || '');
@@ -179,7 +181,7 @@ function EditRow({ cat, onSave, onCancel }) {
           value={name}
           onChange={(e) => { setName(e.target.value); setSlug(slugify(e.target.value)); }}
           className={`${inputCls} w-full`}
-          placeholder="Category name"
+          placeholder={t('admin.categories.edit.namePlaceholder')}
           required
         />
       </td>
@@ -188,7 +190,7 @@ function EditRow({ cat, onSave, onCancel }) {
           value={slug}
           onChange={(e) => setSlug(e.target.value)}
           className={`${inputCls} w-full font-mono text-xs`}
-          placeholder="category-slug"
+          placeholder={t('admin.categories.edit.slugPlaceholder')}
         />
       </td>
       <td className="px-4 py-3">
@@ -201,7 +203,7 @@ function EditRow({ cat, onSave, onCancel }) {
         />
       </td>
       <td className="px-4 py-3" colSpan={2}>
-        <ImageField imageUrl={imageUrl} setImageUrl={setImageUrl} label="Image" />
+        <ImageField imageUrl={imageUrl} setImageUrl={setImageUrl} label={t('admin.categories.image.label')} />
         {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
       </td>
       <td className="px-4 py-3">
@@ -211,14 +213,14 @@ function EditRow({ cat, onSave, onCancel }) {
             disabled={saving || !name.trim()}
             className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white text-xs font-semibold rounded-lg transition-colors"
           >
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? t('admin.categories.edit.saving') : t('admin.categories.edit.save')}
           </button>
           <button
             type="button"
             onClick={onCancel}
             className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-semibold rounded-lg transition-colors"
           >
-            Cancel
+            {t('admin.categories.edit.cancel')}
           </button>
         </form>
       </td>
@@ -228,6 +230,7 @@ function EditRow({ cat, onSave, onCancel }) {
 
 // ── Page ──────────────────────────────────────────────────────
 export default function AdminCategoriesPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -320,7 +323,7 @@ export default function AdminCategoriesPage() {
       <AdminTopBar onLogout={handleLogout} />
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-10 space-y-8">
-        <h1 className="text-2xl font-bold text-slate-900">Categories</h1>
+        <h1 className="text-2xl font-bold text-slate-900">{t('admin.categories.heading')}</h1>
 
         {error && (
           <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">{error}</div>
@@ -332,10 +335,10 @@ export default function AdminCategoriesPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100 text-left">
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Name</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Slug</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Order</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide" colSpan={2}>Image</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t('admin.categories.table.name')}</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t('admin.categories.table.slug')}</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t('admin.categories.table.order')}</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide" colSpan={2}>{t('admin.categories.table.image')}</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -353,7 +356,7 @@ export default function AdminCategoriesPage() {
                 ) : categories.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-4 py-10 text-center text-slate-400 text-sm">
-                      No categories yet. Add one below.
+                      {t('admin.categories.empty')}
                     </td>
                   </tr>
                 ) : (
@@ -388,25 +391,25 @@ export default function AdminCategoriesPage() {
                         </td>
                         <td className="px-4 py-3 max-w-[160px]">
                           <span className="text-xs text-slate-400 truncate block">
-                            {cat.image_url || <span className="italic">No image</span>}
+                            {cat.image_url || <span className="italic">{t('common.noImage')}</span>}
                           </span>
                         </td>
                         <td className="px-4 py-3">
                           {deletingId === cat.id ? (
                             <div className="flex items-center gap-2">
-                              <span className="text-xs text-red-600 font-medium">Delete?</span>
+                              <span className="text-xs text-red-600 font-medium">{t('admin.categories.delete.confirm')}</span>
                               <button
                                 onClick={() => handleDelete(cat.id)}
                                 disabled={deleting}
                                 className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg transition-colors"
                               >
-                                {deleting ? '…' : 'Yes'}
+                                {deleting ? '…' : t('admin.categories.delete.yes')}
                               </button>
                               <button
                                 onClick={() => setDeletingId(null)}
                                 className="px-2.5 py-1 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-semibold rounded-lg transition-colors"
                               >
-                                No
+                                {t('admin.categories.delete.no')}
                               </button>
                             </div>
                           ) : (
@@ -415,13 +418,13 @@ export default function AdminCategoriesPage() {
                                 onClick={() => setEditingId(cat.id)}
                                 className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors"
                               >
-                                Edit
+                                {t('admin.categories.actions.edit')}
                               </button>
                               <button
                                 onClick={() => setDeletingId(cat.id)}
                                 className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold rounded-lg transition-colors"
                               >
-                                Delete
+                                {t('admin.categories.actions.delete')}
                               </button>
                             </div>
                           )}
@@ -437,39 +440,39 @@ export default function AdminCategoriesPage() {
 
         {/* ── Add new category ── */}
         <div className="bg-white rounded-2xl border border-slate-200 p-6">
-          <h2 className="text-base font-bold text-slate-900 mb-4">Add category</h2>
+          <h2 className="text-base font-bold text-slate-900 mb-4">{t('admin.categories.add.heading')}</h2>
           <form onSubmit={handleCreate} className="flex flex-col gap-4">
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Name *</label>
+                <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">{t('admin.categories.add.nameLabel')}</label>
                 <input
                   value={newName}
                   onChange={(e) => { setNewName(e.target.value); setNewSlug(slugify(e.target.value)); }}
-                  placeholder="e.g. Hoodies"
+                  placeholder={t('admin.categories.add.namePlaceholder')}
                   required
                   className={inputCls}
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Slug</label>
+                <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">{t('admin.categories.add.slugLabel')}</label>
                 <input
                   value={newSlug}
                   onChange={(e) => setNewSlug(e.target.value)}
-                  placeholder="hoodies"
+                  placeholder={t('admin.categories.add.slugPlaceholder')}
                   className={`${inputCls} font-mono text-xs`}
                 />
               </div>
             </div>
 
             <div className="grid sm:grid-cols-2 gap-4">
-              <ImageField imageUrl={newImageUrl} setImageUrl={setNewImageUrl} label="Category image" />
+              <ImageField imageUrl={newImageUrl} setImageUrl={setNewImageUrl} label={t('admin.categories.add.imageLabel')} />
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Sort order</label>
+                <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">{t('admin.categories.add.sortOrderLabel')}</label>
                 <input
                   type="number"
                   value={newSortOrder}
                   onChange={(e) => setNewSortOrder(e.target.value)}
-                  placeholder="0"
+                  placeholder={t('admin.categories.add.sortOrderPlaceholder')}
                   min={0}
                   className={`${inputCls} w-28`}
                 />
@@ -485,7 +488,7 @@ export default function AdminCategoriesPage() {
                 disabled={creating || !newName.trim()}
                 className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white font-semibold rounded-xl text-sm transition-colors"
               >
-                {creating ? 'Adding…' : 'Add category'}
+                {creating ? t('admin.categories.add.submitting') : t('admin.categories.add.submit')}
               </button>
             </div>
           </form>

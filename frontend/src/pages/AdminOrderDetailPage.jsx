@@ -1,7 +1,9 @@
 // src/pages/AdminOrderDetailPage.jsx
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { fetchAdminOrder, updateOrderStatus } from '../api/admin';
+import { AdminTopBar } from './AdminProductsPage';
 
 // ── Helpers ───────────────────────────────────────────────────
 function formatPrice(cents) {
@@ -20,12 +22,6 @@ const STATUS_STYLES = {
   paid:      'bg-indigo-100 text-indigo-700 border-indigo-200',
   fulfilled: 'bg-green-100 text-green-700 border-green-200',
   cancelled: 'bg-slate-100 text-slate-500 border-slate-200',
-};
-
-const DECORATION_LABELS = {
-  dtg: 'DTG Print',
-  embroidery: 'Embroidery',
-  screen: 'Screen Print',
 };
 
 function StatusBadge({ status }) {
@@ -48,6 +44,7 @@ function InfoCard({ title, children }) {
 
 // ── Page ──────────────────────────────────────────────────────
 export default function AdminOrderDetailPage() {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -87,6 +84,11 @@ export default function AdminOrderDetailPage() {
     load();
   }, [load, navigate]);
 
+  const handleLogout = () => {
+    sessionStorage.removeItem('admin_token');
+    navigate('/admin', { replace: true });
+  };
+
   const handleStatusUpdate = async () => {
     if (!selectedStatus || selectedStatus === order.status) return;
     setUpdating(true);
@@ -123,25 +125,7 @@ export default function AdminOrderDetailPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Top bar */}
-      <header className="sticky top-0 z-40 bg-white border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link to="/" className="text-lg font-extrabold text-slate-900 tracking-tight">
-              Print<span className="text-indigo-600">Shop</span>
-            </Link>
-            <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-full uppercase tracking-wide">
-              Admin
-            </span>
-          </div>
-          <button
-            onClick={() => { sessionStorage.removeItem('admin_token'); navigate('/admin', { replace: true }); }}
-            className="text-sm text-slate-500 hover:text-slate-900 font-medium transition-colors"
-          >
-            Logout
-          </button>
-        </div>
-      </header>
+      <AdminTopBar onLogout={handleLogout} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex flex-col gap-6">
         {/* Back + Header */}
@@ -153,11 +137,11 @@ export default function AdminOrderDetailPage() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            Orders
+            {t('admin.orderDetail.backToOrders')}
           </Link>
 
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-bold text-slate-900">Order #{shortId}</h1>
+            <h1 className="text-2xl font-bold text-slate-900">{t('admin.orderDetail.orderNumber', { id: shortId })}</h1>
             {order && <StatusBadge status={order.status} />}
           </div>
           {order && (
@@ -173,37 +157,37 @@ export default function AdminOrderDetailPage() {
           <>
             {/* Status update */}
             <div className="bg-white rounded-2xl border border-slate-200 p-5 flex flex-wrap items-center gap-3">
-              <span className="text-sm font-semibold text-slate-700">Update status:</span>
+              <span className="text-sm font-semibold text-slate-700">{t('admin.orderDetail.updateStatus')}</span>
               <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
                 className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-400"
               >
-                <option value="pending">Pending</option>
-                <option value="paid">Paid</option>
-                <option value="fulfilled">Fulfilled</option>
-                <option value="cancelled">Cancelled</option>
+                <option value="pending">{t('admin.orderDetail.statusOptions.pending')}</option>
+                <option value="paid">{t('admin.orderDetail.statusOptions.paid')}</option>
+                <option value="fulfilled">{t('admin.orderDetail.statusOptions.fulfilled')}</option>
+                <option value="cancelled">{t('admin.orderDetail.statusOptions.cancelled')}</option>
               </select>
               <button
                 onClick={handleStatusUpdate}
                 disabled={updating || selectedStatus === order.status}
                 className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-200 text-white text-sm font-semibold rounded-lg transition-colors"
               >
-                {updating ? 'Saving…' : 'Save'}
+                {updating ? t('admin.orderDetail.saving') : t('admin.orderDetail.saveStatus')}
               </button>
               {updateSuccess && (
                 <span className="text-sm text-green-600 font-medium flex items-center gap-1">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
-                  Updated
+                  {t('admin.orderDetail.updated')}
                 </span>
               )}
             </div>
 
             {/* Customer + Payment info */}
             <div className="grid sm:grid-cols-2 gap-4">
-              <InfoCard title="Shipping address">
+              <InfoCard title={t('admin.orderDetail.cards.shippingAddress')}>
                 <div className="text-sm text-slate-800 space-y-1">
                   <p className="font-semibold">{order.shipping_name || '—'}</p>
                   <p className="text-slate-500">{order.shipping_email || '—'}</p>
@@ -222,15 +206,15 @@ export default function AdminOrderDetailPage() {
                 </div>
               </InfoCard>
 
-              <InfoCard title="Payment">
+              <InfoCard title={t('admin.orderDetail.cards.payment')}>
                 <div className="text-sm space-y-3">
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Amount paid</span>
+                    <span className="text-slate-500">{t('admin.orderDetail.cards.amountPaid')}</span>
                     <span className="font-bold text-slate-900">{formatPrice(order.subtotal_cents)}</span>
                   </div>
                   {order.stripe_payment_intent_id && (
                     <div className="flex justify-between items-start gap-4">
-                      <span className="text-slate-500 flex-shrink-0">Stripe PI</span>
+                      <span className="text-slate-500 flex-shrink-0">{t('admin.orderDetail.cards.stripePI')}</span>
                       <a
                         href={`https://dashboard.stripe.com/test/payments/${order.stripe_payment_intent_id}`}
                         target="_blank"
@@ -242,7 +226,7 @@ export default function AdminOrderDetailPage() {
                     </div>
                   )}
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Status</span>
+                    <span className="text-slate-500">{t('admin.orderDetail.cards.status')}</span>
                     <StatusBadge status={order.status} />
                   </div>
                 </div>
@@ -253,26 +237,28 @@ export default function AdminOrderDetailPage() {
             <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-100">
                 <h3 className="text-sm font-bold text-slate-800">
-                  Order items ({items.length})
+                  {t('admin.orderDetail.items.heading', { count: items.length })}
                 </h3>
               </div>
 
               {items.length === 0 ? (
-                <p className="px-6 py-8 text-sm text-slate-400 text-center">No items found</p>
+                <p className="px-6 py-8 text-sm text-slate-400 text-center">{t('admin.orderDetail.items.empty')}</p>
               ) : (
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-100 bg-slate-50 text-left">
-                      <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Product</th>
-                      <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Design</th>
-                      <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide text-center">Qty</th>
-                      <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">Unit</th>
-                      <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">Total</th>
+                      <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t('admin.orderDetail.items.columns.product')}</th>
+                      <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t('admin.orderDetail.items.columns.design')}</th>
+                      <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide text-center">{t('admin.orderDetail.items.columns.qty')}</th>
+                      <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">{t('admin.orderDetail.items.columns.unit')}</th>
+                      <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">{t('admin.orderDetail.items.columns.total')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {items.map((item) => {
-                      const decorLabel = DECORATION_LABELS[item.config?.decoration] || item.config?.decoration || '—';
+                      const decorLabel = item.config?.decoration
+                        ? t(`product.decoration.${item.config.decoration}`, { defaultValue: item.config.decoration })
+                        : '—';
                       const designPreview = item.config?.design_preview_url
                         || item.config?.front?.design_preview_url
                         || item.config?.back?.design_preview_url
@@ -293,7 +279,7 @@ export default function AdminOrderDetailPage() {
                               </div>
                               <div>
                                 <p className="font-semibold text-slate-800">
-                                  {item.product?.name || 'Custom T-Shirt'}
+                                  {item.product?.name || t('product.customTShirt')}
                                 </p>
                                 <div className="flex flex-wrap gap-1 mt-1">
                                   {item.config?.color && (
@@ -351,7 +337,7 @@ export default function AdminOrderDetailPage() {
                   <tfoot>
                     <tr className="border-t border-slate-200 bg-slate-50">
                       <td colSpan={4} className="px-6 py-4 text-right text-sm font-bold text-slate-700">
-                        Order total
+                        {t('admin.orderDetail.items.orderTotal')}
                       </td>
                       <td className="px-6 py-4 text-right text-base font-extrabold text-slate-900">
                         {formatPrice(order.subtotal_cents)}

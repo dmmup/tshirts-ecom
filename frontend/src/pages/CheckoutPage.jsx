@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { useTranslation } from 'react-i18next';
 import {
   Elements,
   PaymentElement,
@@ -11,6 +12,7 @@ import {
 import { stripePromise } from '../lib/stripe';
 import { fetchCart, createPaymentIntent, validatePromoCode } from '../api/products';
 import { useAuth } from '../context/AuthContext';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 
 const API = import.meta.env.VITE_API_URL || '/api';
 
@@ -28,11 +30,12 @@ function OrderSummary({
   items, subtotalCents, discountCents, totalCents,
   appliedPromo, promoInput, setPromoInput, onApply, onRemove, promoLoading, promoError,
 }) {
+  const { t } = useTranslation();
   const itemCount = items.reduce((a, i) => a + i.quantity, 0);
 
   return (
     <div className="bg-slate-50 rounded-2xl border border-slate-200 p-6 flex flex-col gap-4">
-      <h2 className="font-bold text-slate-900 text-base">Order summary</h2>
+      <h2 className="font-bold text-slate-900 text-base">{t('checkout.summary.heading')}</h2>
 
       {/* Item list */}
       <ul className="flex flex-col gap-3">
@@ -48,10 +51,10 @@ function OrderSummary({
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-slate-800 truncate">
-                {item.product?.name || 'Custom T-Shirt'}
+                {item.product?.name || t('checkout.summary.defaultProduct')}
               </p>
               <p className="text-xs text-slate-500">
-                {item.config?.color} · {item.config?.size} · qty {item.quantity}
+                {item.config?.color} · {item.config?.size} · {t('checkout.summary.qty')} {item.quantity}
               </p>
             </div>
             <p className="text-sm font-semibold text-slate-800 flex-shrink-0">
@@ -63,21 +66,21 @@ function OrderSummary({
 
       <div className="border-t border-slate-200 pt-4 space-y-2 text-sm">
         <div className="flex justify-between text-slate-600">
-          <span>Subtotal ({itemCount} {itemCount === 1 ? 'item' : 'items'})</span>
+          <span>{t('checkout.summary.subtotal', { count: itemCount })}</span>
           <span className="font-semibold text-slate-800">{formatPrice(subtotalCents)}</span>
         </div>
         {discountCents > 0 && (
           <div className="flex justify-between text-green-700">
-            <span>Promo ({appliedPromo?.code})</span>
+            <span>{t('checkout.summary.promo', { code: appliedPromo?.code })}</span>
             <span className="font-semibold">−{formatPrice(discountCents)}</span>
           </div>
         )}
         <div className="flex justify-between text-slate-600">
-          <span>Shipping</span>
-          <span className="text-green-600 font-medium">Free</span>
+          <span>{t('checkout.summary.shipping')}</span>
+          <span className="text-green-600 font-medium">{t('checkout.summary.shippingFree')}</span>
         </div>
         <div className="flex justify-between font-bold text-slate-900 pt-2 border-t border-slate-200">
-          <span>Total</span>
+          <span>{t('checkout.summary.total')}</span>
           <span>{formatPrice(totalCents)}</span>
         </div>
       </div>
@@ -87,14 +90,14 @@ function OrderSummary({
         {appliedPromo ? (
           <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-3 py-2.5">
             <span className="text-sm text-green-700 font-medium">
-              {appliedPromo.code} applied
+              {t('checkout.promo.applied', { code: appliedPromo.code })}
             </span>
             <button
               onClick={onRemove}
               disabled={promoLoading}
               className="text-xs text-red-500 hover:text-red-700 font-medium ml-2 disabled:opacity-50"
             >
-              {promoLoading ? '…' : 'Remove'}
+              {promoLoading ? t('checkout.promo.removing') : t('checkout.promo.remove')}
             </button>
           </div>
         ) : (
@@ -105,7 +108,7 @@ function OrderSummary({
                 value={promoInput}
                 onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
                 onKeyDown={(e) => e.key === 'Enter' && onApply()}
-                placeholder="Promo code"
+                placeholder={t('checkout.promo.placeholder')}
                 className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition uppercase"
               />
               <button
@@ -113,7 +116,7 @@ function OrderSummary({
                 disabled={promoLoading || !promoInput.trim()}
                 className="px-4 py-2 bg-slate-800 text-white text-sm font-semibold rounded-xl hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition whitespace-nowrap"
               >
-                {promoLoading ? '…' : 'Apply'}
+                {promoLoading ? t('checkout.promo.applying') : t('checkout.promo.apply')}
               </button>
             </div>
             {promoError && <p className="text-xs text-red-600">{promoError}</p>}
@@ -126,14 +129,16 @@ function OrderSummary({
 
 // ── Shipping Form ─────────────────────────────────────────────
 function ShippingForm({ value, onChange }) {
-  const field = (name, label, placeholder, props = {}) => (
+  const { t } = useTranslation();
+
+  const field = (name, labelKey, placeholderKey, props = {}) => (
     <div className="flex flex-col gap-1">
-      <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">{label}</label>
+      <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">{t(labelKey)}</label>
       <input
         name={name}
         value={value[name] || ''}
         onChange={(e) => onChange({ ...value, [name]: e.target.value })}
-        placeholder={placeholder}
+        placeholder={t(placeholderKey)}
         className="px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition"
         {...props}
       />
@@ -142,18 +147,18 @@ function ShippingForm({ value, onChange }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <h2 className="font-bold text-slate-900 text-base">Shipping information</h2>
+      <h2 className="font-bold text-slate-900 text-base">{t('checkout.shipping.heading')}</h2>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {field('name', 'Full name', 'Jane Doe', { required: true, autoComplete: 'name' })}
-        {field('email', 'Email', 'jane@example.com', { required: true, type: 'email', autoComplete: 'email' })}
+        {field('name', 'checkout.shipping.fullName', 'checkout.shipping.fullNamePlaceholder', { required: true, autoComplete: 'name' })}
+        {field('email', 'checkout.shipping.email', 'checkout.shipping.emailPlaceholder', { required: true, type: 'email', autoComplete: 'email' })}
       </div>
-      {field('line1', 'Address', '123 Main St', { required: true, autoComplete: 'address-line1' })}
-      {field('line2', 'Apartment, suite, etc.', 'Apt 4B (optional)', { autoComplete: 'address-line2' })}
+      {field('line1', 'checkout.shipping.address', 'checkout.shipping.addressPlaceholder', { required: true, autoComplete: 'address-line1' })}
+      {field('line2', 'checkout.shipping.apartment', 'checkout.shipping.apartmentPlaceholder', { autoComplete: 'address-line2' })}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-        {field('city', 'City', 'New York', { required: true, autoComplete: 'address-level2' })}
-        {field('state', 'State', 'NY', { required: true, autoComplete: 'address-level1' })}
-        {field('postal_code', 'ZIP', '10001', { required: true, autoComplete: 'postal-code' })}
+        {field('city', 'checkout.shipping.city', 'checkout.shipping.cityPlaceholder', { required: true, autoComplete: 'address-level2' })}
+        {field('state', 'checkout.shipping.state', 'checkout.shipping.statePlaceholder', { required: true, autoComplete: 'address-level1' })}
+        {field('postal_code', 'checkout.shipping.zip', 'checkout.shipping.zipPlaceholder', { required: true, autoComplete: 'postal-code' })}
       </div>
     </div>
   );
@@ -161,6 +166,7 @@ function ShippingForm({ value, onChange }) {
 
 // ── Inner Payment Form (must be inside <Elements>) ───────────
 function PaymentForm({ totalCents, shipping, onShippingChange, items, clientSecret }) {
+  const { t } = useTranslation();
   const stripe = useStripe();
   const elements = useElements();
   const navigate = useNavigate();
@@ -223,7 +229,7 @@ function PaymentForm({ totalCents, shipping, onShippingChange, items, clientSecr
 
       {/* Payment section */}
       <div className="flex flex-col gap-4">
-        <h2 className="font-bold text-slate-900 text-base">Payment</h2>
+        <h2 className="font-bold text-slate-900 text-base">{t('checkout.payment.heading')}</h2>
         <div className="p-4 rounded-2xl border border-slate-200 bg-white">
           <PaymentElement
             options={{
@@ -250,14 +256,14 @@ function PaymentForm({ totalCents, shipping, onShippingChange, items, clientSecr
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
-            Processing…
+            {t('checkout.payment.processing')}
           </>
         ) : (
           <>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
-            Pay {formatPrice(totalCents)}
+            {t('checkout.payment.pay', { amount: formatPrice(totalCents) })}
           </>
         )}
       </button>
@@ -266,7 +272,7 @@ function PaymentForm({ totalCents, shipping, onShippingChange, items, clientSecr
         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
         </svg>
-        Secured by Stripe · Your payment info is never stored on our servers
+        {t('checkout.payment.securedBy')}
       </p>
     </form>
   );
@@ -274,6 +280,7 @@ function PaymentForm({ totalCents, shipping, onShippingChange, items, clientSecr
 
 // ── Page ──────────────────────────────────────────────────────
 export default function CheckoutPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, session } = useAuth();
 
@@ -402,15 +409,15 @@ export default function CheckoutPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
         <div className="max-w-md text-center space-y-3">
-          <p className="text-2xl font-bold text-slate-800">Checkout unavailable</p>
+          <p className="text-2xl font-bold text-slate-800">{t('checkout.unavailable.heading')}</p>
           <p className="text-slate-500 text-sm">
-            Stripe is not configured. Add <code className="bg-slate-100 px-1 rounded">VITE_STRIPE_PUBLISHABLE_KEY</code> to{' '}
-            <code className="bg-slate-100 px-1 rounded">frontend/.env</code> and{' '}
-            <code className="bg-slate-100 px-1 rounded">STRIPE_SECRET_KEY</code> to{' '}
-            <code className="bg-slate-100 px-1 rounded">backend/.env</code>.
+            Stripe is not configured. Add <code className="bg-slate-100 px-1 rounded">VITE_STRIPE_PUBLISHABLE_KEY</code>{' '}
+            to <code className="bg-slate-100 px-1 rounded">frontend/.env</code>{' '}
+            and <code className="bg-slate-100 px-1 rounded">STRIPE_SECRET_KEY</code>{' '}
+            to <code className="bg-slate-100 px-1 rounded">backend/.env</code>.
           </p>
           <Link to="/cart" className="inline-block text-indigo-600 hover:underline text-sm font-medium">
-            ← Back to cart
+            {t('checkout.backToCart')}
           </Link>
         </div>
       </div>
@@ -420,7 +427,7 @@ export default function CheckoutPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       <Helmet>
-        <title>Secure Checkout | PrintShop</title>
+        <title>{t('checkout.meta.title')}</title>
         <meta name="robots" content="noindex" />
       </Helmet>
       {/* Top bar */}
@@ -429,34 +436,37 @@ export default function CheckoutPage() {
           <Link to="/" className="text-xl font-bold text-slate-900 tracking-tight">
             Print<span className="text-indigo-600">Shop</span>
           </Link>
-          <Link to="/cart" className="text-sm text-slate-500 hover:text-indigo-600 transition-colors font-medium">
-            ← Back to cart
-          </Link>
+          <div className="flex items-center gap-4">
+            <LanguageSwitcher />
+            <Link to="/cart" className="text-sm text-slate-500 hover:text-indigo-600 transition-colors font-medium">
+              {t('checkout.backToCart')}
+            </Link>
+          </div>
         </div>
       </header>
 
       {/* Progress breadcrumb */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-6">
         <nav className="flex items-center gap-2 text-xs font-medium text-slate-400">
-          <span className="text-indigo-600 font-semibold">Cart</span>
+          <span className="text-indigo-600 font-semibold">{t('checkout.breadcrumb.cart')}</span>
           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
-          <span className="text-slate-800 font-semibold">Checkout</span>
+          <span className="text-slate-800 font-semibold">{t('checkout.breadcrumb.checkout')}</span>
           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
-          <span>Confirmation</span>
+          <span>{t('checkout.breadcrumb.confirmation')}</span>
         </nav>
       </div>
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
         {error ? (
           <div className="max-w-lg mx-auto mt-12 text-center space-y-4">
-            <p className="text-lg font-semibold text-slate-800">Something went wrong</p>
+            <p className="text-lg font-semibold text-slate-800">{t('checkout.error.heading')}</p>
             <p className="text-sm text-slate-500">{error}</p>
             <Link to="/cart" className="inline-block text-indigo-600 hover:underline text-sm font-medium">
-              ← Back to cart
+              {t('checkout.backToCart')}
             </Link>
           </div>
         ) : loading ? (

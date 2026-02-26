@@ -6,6 +6,7 @@
 
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useWishlist } from '../context/WishlistContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -37,12 +38,13 @@ export function SkeletonCard() {
 function WishButton({ productId }) {
   const { isWished, toggle } = useWishlist();
   const { user } = useAuth();
+  const { t } = useTranslation();
   if (!user) return null;
   const wished = isWished(productId);
   return (
     <button
       onClick={(e) => { e.preventDefault(); toggle(productId); }}
-      aria-label={wished ? 'Remove from wishlist' : 'Add to wishlist'}
+      aria-label={wished ? t('account.wishlist.empty.cta') : t('account.wishlist.empty.cta')}
       className={`absolute top-2.5 right-2.5 z-10 w-8 h-8 flex items-center justify-center rounded-full shadow transition-all duration-200
         ${wished
           ? 'bg-rose-500 text-white opacity-100'
@@ -57,8 +59,22 @@ function WishButton({ productId }) {
   );
 }
 
+// ── Customize label (needs hook so must be a component) ───────
+function CatalogCustomizeLabel() {
+  const { t } = useTranslation();
+  return (
+    <span className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-slate-900 font-semibold rounded-xl text-sm translate-y-3 group-hover:translate-y-0 transition-transform duration-300">
+      {t('catalog.customize')}
+      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+      </svg>
+    </span>
+  );
+}
+
 // ── Product card ──────────────────────────────────────────────
 export function ProductCard({ product }) {
+  const { t } = useTranslation();
   const [imgError, setImgError] = useState(false);
   const swatches = (product.colors || []).slice(0, 5);
   const extraColors = (product.colors || []).length - 5;
@@ -91,12 +107,7 @@ export function ProductCard({ product }) {
 
         {/* Hover overlay CTA */}
         <div className="absolute inset-0 bg-black/35 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-3.5">
-          <span className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-slate-900 font-semibold rounded-xl text-sm translate-y-3 group-hover:translate-y-0 transition-transform duration-300">
-            Customize
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-            </svg>
-          </span>
+          <CatalogCustomizeLabel />
         </div>
       </div>
 
@@ -106,7 +117,7 @@ export function ProductCard({ product }) {
 
         <div className="flex items-center justify-between">
           {product.minPrice !== null && (
-            <span className="text-sm font-semibold text-slate-800">From {formatPrice(product.minPrice)}</span>
+            <span className="text-sm font-semibold text-slate-800">{t('common.from')} {formatPrice(product.minPrice)}</span>
           )}
           {product.base_rating > 0 && (
             <div className="flex items-center gap-1">
@@ -161,6 +172,7 @@ function SidebarSection({ title, children, defaultOpen = true }) {
 
 // ── Filter sidebar ─────────────────────────────────────────────
 function FilterSidebar({ filters, onChange, allSizes, allColors, priceMin, priceMax, activeCount }) {
+  const { t } = useTranslation();
   const { search, minPrice, maxPrice, sizes, colors } = filters;
 
   const toggle = (arr, val) =>
@@ -175,19 +187,19 @@ function FilterSidebar({ filters, onChange, allSizes, allColors, priceMin, price
       {activeCount > 0 && (
         <div className="flex items-center justify-between mb-1 pb-3 border-b border-slate-100">
           <span className="text-xs font-semibold text-indigo-600">
-            {activeCount} filter{activeCount !== 1 ? 's' : ''} active
+            {t('catalog.filtersActive', { count: activeCount })}
           </span>
           <button
             onClick={clearAll}
             className="text-xs text-slate-400 hover:text-red-500 transition-colors"
           >
-            Clear all
+            {t('catalog.clearAll')}
           </button>
         </div>
       )}
 
       {/* Search */}
-      <SidebarSection title="Search">
+      <SidebarSection title={t('common.search')}>
         <div className="relative">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0" />
@@ -196,14 +208,14 @@ function FilterSidebar({ filters, onChange, allSizes, allColors, priceMin, price
             type="text"
             value={search}
             onChange={(e) => onChange({ ...filters, search: e.target.value })}
-            placeholder="Search products…"
+            placeholder={t('catalog.searchPlaceholder')}
             className="w-full pl-8 pr-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent"
           />
         </div>
       </SidebarSection>
 
       {/* Price */}
-      <SidebarSection title="Price">
+      <SidebarSection title={t('catalog.price')}>
         <div className="flex items-center gap-2">
           <input
             type="number"
@@ -227,7 +239,7 @@ function FilterSidebar({ filters, onChange, allSizes, allColors, priceMin, price
 
       {/* Sizes */}
       {allSizes.length > 0 && (
-        <SidebarSection title="Size">
+        <SidebarSection title={t('catalog.size')}>
           <div className="flex flex-wrap gap-2">
             {allSizes.map((size) => {
               const active = sizes.includes(size);
@@ -251,7 +263,7 @@ function FilterSidebar({ filters, onChange, allSizes, allColors, priceMin, price
 
       {/* Colors */}
       {allColors.length > 0 && (
-        <SidebarSection title="Color">
+        <SidebarSection title={t('catalog.color')}>
           <div className="flex flex-wrap gap-2.5">
             {allColors.map(({ name, hex }) => {
               const active = colors.includes(name);
@@ -305,6 +317,7 @@ function Chip({ label, onRemove }) {
 //   subtitle   – optional sub-heading text
 //   breadcrumb – optional JSX breadcrumb row
 export default function CatalogView({ products, loading, title, subtitle, breadcrumb }) {
+  const { t } = useTranslation();
   const [filters, setFilters] = useState({
     search: '',
     minPrice: '',
@@ -385,7 +398,7 @@ export default function CatalogView({ products, loading, title, subtitle, breadc
 
         {/* ── Left sidebar (desktop) ───────────────────────── */}
         <aside className="hidden lg:block w-60 flex-shrink-0 sticky top-24">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Filters</p>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">{t('catalog.filters')}</p>
           <FilterSidebar
             filters={filters}
             onChange={setFilters}
@@ -412,7 +425,7 @@ export default function CatalogView({ products, loading, title, subtitle, breadc
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                   d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
               </svg>
-              Filters
+              {t('catalog.filters')}
               {activeCount > 0 && (
                 <span className="px-1.5 py-0.5 bg-indigo-600 text-white text-[10px] font-bold rounded-full leading-none">
                   {activeCount}
@@ -422,7 +435,7 @@ export default function CatalogView({ products, loading, title, subtitle, breadc
 
             {/* Results count */}
             <p className="text-sm text-slate-500">
-              {loading ? 'Loading…' : `${filtered.length} result${filtered.length !== 1 ? 's' : ''}`}
+              {loading ? t('common.loading') : t('catalog.results', { count: filtered.length })}
             </p>
 
             {/* Active filter chips */}
@@ -448,16 +461,16 @@ export default function CatalogView({ products, loading, title, subtitle, breadc
 
             {/* Sort dropdown — pushed to far right */}
             <div className="ml-auto flex items-center gap-2">
-              <label className="text-sm text-slate-500 hidden sm:block whitespace-nowrap">Sort by</label>
+              <label className="text-sm text-slate-500 hidden sm:block whitespace-nowrap">{t('catalog.filters')}</label>
               <select
                 value={filters.sort}
                 onChange={(e) => setFilters((f) => ({ ...f, sort: e.target.value }))}
                 className="text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-300 cursor-pointer"
               >
-                <option value="featured">Featured</option>
-                <option value="price_asc">Price: Low → High</option>
-                <option value="price_desc">Price: High → Low</option>
-                <option value="newest">Newest first</option>
+                <option value="featured">{t('catalog.sort.featured')}</option>
+                <option value="price_asc">{t('catalog.sort.priceAsc')}</option>
+                <option value="price_desc">{t('catalog.sort.priceDesc')}</option>
+                <option value="newest">{t('catalog.sort.newest')}</option>
               </select>
             </div>
           </div>
@@ -488,10 +501,10 @@ export default function CatalogView({ products, loading, title, subtitle, breadc
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                   d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
               </svg>
-              <p className="font-semibold text-slate-500">No products match your filters</p>
+              <p className="font-semibold text-slate-500">{t('catalog.noMatch')}</p>
               {activeCount > 0 && (
                 <button onClick={clearAll} className="mt-3 text-sm text-indigo-600 hover:underline">
-                  Clear all filters
+                  {t('catalog.clearAllFilters')}
                 </button>
               )}
             </div>

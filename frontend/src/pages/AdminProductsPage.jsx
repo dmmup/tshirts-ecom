@@ -1,10 +1,13 @@
 // src/pages/AdminProductsPage.jsx
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { fetchAdminProducts, deleteProduct } from '../api/admin';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 
 // ── Shared admin top bar ──────────────────────────────────────
 export function AdminTopBar({ onLogout }) {
+  const { t } = useTranslation();
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-slate-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
@@ -13,41 +16,44 @@ export function AdminTopBar({ onLogout }) {
             Print<span className="text-indigo-600">Shop</span>
           </Link>
           <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-full uppercase tracking-wide">
-            Admin
+            {t('admin.topBar.adminBadge')}
           </span>
           <nav className="hidden sm:flex items-center gap-1 ml-2">
             <Link
               to="/admin/dashboard"
               className="px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
             >
-              Dashboard
+              {t('admin.topBar.dashboard')}
             </Link>
             <Link
               to="/admin/orders"
               className="px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
             >
-              Orders
+              {t('admin.topBar.orders')}
             </Link>
             <Link
               to="/admin/products"
               className="px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
             >
-              Products
+              {t('admin.topBar.products')}
             </Link>
             <Link
               to="/admin/categories"
               className="px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
             >
-              Categories
+              {t('admin.topBar.categories')}
             </Link>
           </nav>
         </div>
-        <button
-          onClick={onLogout}
-          className="text-sm text-slate-500 hover:text-slate-900 font-medium transition-colors"
-        >
-          Logout
-        </button>
+        <div className="flex items-center gap-3">
+          <LanguageSwitcher />
+          <button
+            onClick={onLogout}
+            className="text-sm text-slate-500 hover:text-slate-900 font-medium transition-colors"
+          >
+            {t('admin.topBar.logout')}
+          </button>
+        </div>
       </div>
     </header>
   );
@@ -55,6 +61,7 @@ export function AdminTopBar({ onLogout }) {
 
 // ── Page ──────────────────────────────────────────────────────
 export default function AdminProductsPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -107,8 +114,8 @@ export default function AdminProductsPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex flex-col gap-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Products</h1>
-            <p className="text-sm text-slate-500 mt-0.5">Manage your product catalog</p>
+            <h1 className="text-2xl font-bold text-slate-900">{t('admin.products.heading')}</h1>
+            <p className="text-sm text-slate-500 mt-0.5">{t('admin.products.subtitle')}</p>
           </div>
           <Link
             to="/admin/products/new"
@@ -117,7 +124,7 @@ export default function AdminProductsPage() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            New product
+            {t('admin.products.newProduct')}
           </Link>
         </div>
 
@@ -146,19 +153,19 @@ export default function AdminProductsPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                   d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
               </svg>
-              <p className="text-sm font-medium text-slate-500">No products yet</p>
+              <p className="text-sm font-medium text-slate-500">{t('admin.products.empty.heading')}</p>
               <Link to="/admin/products/new" className="mt-3 inline-block text-indigo-600 hover:underline text-sm font-medium">
-                Create your first product →
+                {t('admin.products.empty.cta')}
               </Link>
             </div>
           ) : (
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50 text-left">
-                  <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Product</th>
-                  <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide text-center">Variants</th>
-                  <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide text-center">Images</th>
-                  <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Slug</th>
+                  <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t('admin.products.table.product')}</th>
+                  <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide text-center">{t('admin.products.table.variants')}</th>
+                  <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide text-center">{t('admin.products.table.images')}</th>
+                  <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t('admin.products.table.slug')}</th>
                   <th className="px-6 py-3" />
                 </tr>
               </thead>
@@ -183,19 +190,19 @@ export default function AdminProductsPage() {
                     <td className="px-6 py-4 text-right">
                       {deletingId === p.id ? (
                         <div className="flex items-center justify-end gap-2">
-                          <span className="text-xs text-slate-500">Delete?</span>
+                          <span className="text-xs text-slate-500">{t('admin.products.delete.confirm')}</span>
                           <button
                             onClick={() => handleDelete(p.id)}
                             disabled={deleting}
                             className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
                           >
-                            Yes
+                            {t('admin.products.delete.yes')}
                           </button>
                           <button
                             onClick={() => setDeletingId(null)}
                             className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-lg transition-colors"
                           >
-                            Cancel
+                            {t('admin.products.delete.cancel')}
                           </button>
                         </div>
                       ) : (
@@ -204,13 +211,13 @@ export default function AdminProductsPage() {
                             to={`/admin/products/${p.id}`}
                             className="text-indigo-600 hover:text-indigo-700 text-xs font-semibold"
                           >
-                            Edit
+                            {t('admin.products.actions.edit')}
                           </Link>
                           <button
                             onClick={() => setDeletingId(p.id)}
                             className="text-slate-400 hover:text-red-500 text-xs font-semibold transition-colors"
                           >
-                            Delete
+                            {t('admin.products.actions.delete')}
                           </button>
                         </div>
                       )}

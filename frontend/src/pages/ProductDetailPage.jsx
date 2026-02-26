@@ -7,10 +7,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { useTranslation } from 'react-i18next';
 import { fetchProduct, fetchRelatedProducts, fetchReviews, submitReview, uploadDesign, addToCart, fetchCart, removeCartItem, updateCartItem } from '../api/products';
 import DesignPreview, { makeDefaultPlacement } from '../components/DesignPreview';
 import { useAuth } from '../context/AuthContext';
 import { useWishlist } from '../context/WishlistContext';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 
 // ── Helpers ──────────────────────────────────────────────────
 
@@ -38,6 +40,7 @@ function getAnonymousId() {
 
 // ── Star Rating ───────────────────────────────────────────────
 function StarRating({ rating, count }) {
+  const { t } = useTranslation();
   const full = Math.floor(rating);
   const half = rating - full >= 0.5;
   return (
@@ -52,7 +55,7 @@ function StarRating({ rating, count }) {
           </svg>
         ))}
       </div>
-      <span className="text-sm text-slate-500">({count} reviews)</span>
+      <span className="text-sm text-slate-500">{t('product.reviews', { count })}</span>
     </div>
   );
 }
@@ -62,6 +65,7 @@ function StarRating({ rating, count }) {
 const MAX_DESIGNS = 4;
 
 function DesignPicker({ library, side, sideDesigns, onAddFile, onApply, onRemove }) {
+  const { t } = useTranslation();
   const inputRef = useRef(null);
   const [error, setError] = useState('');
 
@@ -69,8 +73,8 @@ function DesignPicker({ library, side, sideDesigns, onAddFile, onApply, onRemove
     const f = e.target.files[0];
     e.target.value = '';
     if (!f) return;
-    if (!ALLOWED_TYPES.includes(f.type)) { setError('Only PNG or SVG files are accepted.'); return; }
-    if (f.size > MAX_DESIGN_MB * 1024 * 1024) { setError(`Max file size is ${MAX_DESIGN_MB} MB.`); return; }
+    if (!ALLOWED_TYPES.includes(f.type)) { setError(t('product.onlyPngSvg')); return; }
+    if (f.size > MAX_DESIGN_MB * 1024 * 1024) { setError(t('product.fileTooLarge', { max: MAX_DESIGN_MB })); return; }
     setError('');
     onAddFile(f);
   };
@@ -78,9 +82,9 @@ function DesignPicker({ library, side, sideDesigns, onAddFile, onApply, onRemove
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold text-slate-700">Your Design</span>
+        <span className="text-sm font-semibold text-slate-700">{t('product.yourDesign')}</span>
         {library.length > 0 && (
-          <span className="text-xs text-slate-400">{library.length}/{MAX_DESIGNS} uploaded</span>
+          <span className="text-xs text-slate-400">{t('product.uploadedCount', { count: library.length, max: MAX_DESIGNS })}</span>
         )}
       </div>
 
@@ -96,8 +100,8 @@ function DesignPicker({ library, side, sideDesigns, onAddFile, onApply, onRemove
             </svg>
           </div>
           <div className="text-center">
-            <p className="text-sm font-semibold">Upload your design</p>
-            <p className="text-xs mt-0.5 opacity-75">PNG or SVG · max {MAX_DESIGN_MB} MB</p>
+            <p className="text-sm font-semibold">{t('product.uploadDesign')}</p>
+            <p className="text-xs mt-0.5 opacity-75">{t('product.uploadHint', { max: MAX_DESIGN_MB })}</p>
           </div>
         </button>
       ) : (
@@ -151,9 +155,9 @@ function DesignPicker({ library, side, sideDesigns, onAddFile, onApply, onRemove
           <div key={s} className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border ${
             side === s ? 'border-indigo-200 bg-indigo-50 text-indigo-700 font-semibold' : 'border-transparent text-slate-400'
           }`}>
-            <span className="capitalize">{s}:</span>
+            <span className="capitalize">{t(`product.side.${s}`)}:</span>
             <span className={sideDesigns[s]?.localDesignUrl ? 'text-emerald-600 font-semibold' : ''}>
-              {sideDesigns[s]?.localDesignUrl ? '✓ set' : 'none'}
+              {sideDesigns[s]?.localDesignUrl ? t('product.side.set') : t('product.side.none')}
             </span>
           </div>
         ))}
@@ -166,10 +170,11 @@ function DesignPicker({ library, side, sideDesigns, onAddFile, onApply, onRemove
 
 // ── Color Swatches ────────────────────────────────────────────
 function ColorSwatches({ colors, selected, onChange, outOfStockColors = [] }) {
+  const { t } = useTranslation();
   return (
     <div>
       <div className="flex items-center justify-between mb-2.5">
-        <span className="text-sm font-semibold text-slate-700">Color</span>
+        <span className="text-sm font-semibold text-slate-700">{t('product.color')}</span>
         <span className="text-sm text-slate-500">{selected}</span>
       </div>
       <div className="flex flex-wrap gap-2.5">
@@ -178,7 +183,7 @@ function ColorSwatches({ colors, selected, onChange, outOfStockColors = [] }) {
           return (
             <button
               key={name}
-              title={isOOS ? `${name} — Out of stock` : name}
+              title={isOOS ? `${name} — ${t('product.outOfStock')}` : name}
               onClick={() => !isOOS && onChange(name)}
               disabled={isOOS}
               className={`relative w-8 h-8 rounded-full border-2 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 ${
@@ -208,14 +213,16 @@ function ColorSwatches({ colors, selected, onChange, outOfStockColors = [] }) {
 
 // ── Backside Selector ─────────────────────────────────────────
 function BacksideSelector({ value, onChange }) {
+  const { t } = useTranslation();
+  const options = [
+    { id: 'blank', labelKey: 'product.blanckBack' },
+    { id: 'color', labelKey: 'product.printOnBack' },
+  ];
   return (
     <div>
-      <span className="text-sm font-semibold text-slate-700 block mb-2">Backside</span>
+      <span className="text-sm font-semibold text-slate-700 block mb-2">{t('product.backside')}</span>
       <div className="flex gap-2">
-        {[
-          { id: 'blank', label: 'Blank back' },
-          { id: 'color', label: 'Print on back' },
-        ].map(opt => (
+        {options.map(opt => (
           <button
             key={opt.id}
             onClick={() => onChange(opt.id)}
@@ -225,7 +232,7 @@ function BacksideSelector({ value, onChange }) {
                 : 'border-slate-200 text-slate-600 hover:border-slate-300'
             }`}
           >
-            {opt.label}
+            {t(opt.labelKey)}
           </button>
         ))}
       </div>
@@ -234,21 +241,23 @@ function BacksideSelector({ value, onChange }) {
 }
 
 // ── Decoration Technology Selector ───────────────────────────
-const DECORATION_DESCRIPTIONS = {
-  dtg:        'Photorealistic full-color prints. Best for detailed artwork.',
-  embroidery: 'Premium stitched look. Ideal for logos & text.',
-  screen:     'Vibrant, durable. Great for simple designs & bulk orders.',
-};
-
 function DecorationSelector({ value, onChange }) {
+  const { t } = useTranslation();
+
+  const decorationDescriptions = {
+    dtg:        t('product.decoration.dtgDesc'),
+    embroidery: t('product.decoration.embroideryDesc'),
+    screen:     t('product.decoration.screenDesc'),
+  };
+
   const options = [
-    { id: 'dtg',        label: 'DTG' },
-    { id: 'embroidery', label: 'Embroidery' },
-    { id: 'screen',     label: 'Screen' },
+    { id: 'dtg',        labelKey: 'product.decoration.dtg' },
+    { id: 'embroidery', labelKey: 'product.decoration.embroidery' },
+    { id: 'screen',     labelKey: 'product.decoration.screen' },
   ];
   return (
     <div>
-      <span className="text-sm font-semibold text-slate-700 block mb-2">Print Method</span>
+      <span className="text-sm font-semibold text-slate-700 block mb-2">{t('product.printMethod')}</span>
       <div className="flex gap-2">
         {options.map(opt => (
           <button
@@ -260,23 +269,24 @@ function DecorationSelector({ value, onChange }) {
                 : 'border-slate-200 text-slate-600 hover:border-indigo-300 bg-white'
             }`}
           >
-            {opt.label}
+            {t(opt.labelKey)}
           </button>
         ))}
       </div>
-      <p className="text-xs text-slate-500 mt-2">{DECORATION_DESCRIPTIONS[value]}</p>
+      <p className="text-xs text-slate-500 mt-2">{decorationDescriptions[value]}</p>
     </div>
   );
 }
 
 // ── Size Selector ─────────────────────────────────────────────
 function SizeSelector({ sizes, selected, onChange, unavailable = [] }) {
+  const { t } = useTranslation();
   const sorted = sortSizes(sizes);
   return (
     <div>
       <div className="flex items-center justify-between mb-2.5">
-        <span className="text-sm font-semibold text-slate-700">Size</span>
-        <button className="text-xs text-indigo-600 hover:underline">Size guide</button>
+        <span className="text-sm font-semibold text-slate-700">{t('product.size')}</span>
+        <button className="text-xs text-indigo-600 hover:underline">{t('product.sizeGuide')}</button>
       </div>
       <div className="flex flex-wrap gap-2">
         {sorted.map(size => {
@@ -305,17 +315,19 @@ function SizeSelector({ sizes, selected, onChange, unavailable = [] }) {
 
 // ── Delivery Info Block ───────────────────────────────────────
 function DeliveryBlock() {
+  const { t } = useTranslation();
+  const options = [
+    { icon: '🚚', labelKey: 'product.delivery.standard', subKey: 'product.delivery.standardSub' },
+    { icon: '⚡', labelKey: 'product.delivery.express',  subKey: 'product.delivery.expressSub' },
+    { icon: '🏪', labelKey: 'product.delivery.pickup',   subKey: 'product.delivery.pickupSub' },
+  ];
   return (
     <div className="rounded-xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
-      {[
-        { icon: '🚚', label: 'Standard · 5–7 days', sub: 'Free over $50' },
-        { icon: '⚡', label: 'Express · 2–3 days',  sub: '$9.99' },
-        { icon: '🏪', label: 'Pickup · Ready in 48h', sub: 'Select locations' },
-      ].map(opt => (
-        <div key={opt.label} className="flex items-center gap-3 px-4 py-2.5 bg-white">
+      {options.map(opt => (
+        <div key={opt.labelKey} className="flex items-center gap-3 px-4 py-2.5 bg-white">
           <span className="text-base">{opt.icon}</span>
-          <span className="text-sm text-slate-700 font-medium flex-1">{opt.label}</span>
-          <span className="text-xs text-slate-400">{opt.sub}</span>
+          <span className="text-sm text-slate-700 font-medium flex-1">{t(opt.labelKey)}</span>
+          <span className="text-xs text-slate-400">{t(opt.subKey)}</span>
         </div>
       ))}
     </div>
@@ -324,11 +336,12 @@ function DeliveryBlock() {
 
 // ── Breadcrumb ────────────────────────────────────────────────
 function Breadcrumb({ productName }) {
+  const { t } = useTranslation();
   return (
     <nav className="flex items-center gap-1.5 text-sm text-slate-400">
-      <Link to="/" className="hover:text-indigo-600 transition-colors">Home</Link>
+      <Link to="/" className="hover:text-indigo-600 transition-colors">{t('common.home')}</Link>
       <span>/</span>
-      <Link to="/products" className="hover:text-indigo-600 transition-colors">Products</Link>
+      <Link to="/products" className="hover:text-indigo-600 transition-colors">{t('nav.products')}</Link>
       <span>/</span>
       <span className="text-slate-700 font-medium truncate max-w-[220px]">{productName}</span>
     </nav>
@@ -338,8 +351,8 @@ function Breadcrumb({ productName }) {
 // ── Toast ─────────────────────────────────────────────────────
 function Toast({ message, type = 'success', onDismiss }) {
   useEffect(() => {
-    const t = setTimeout(onDismiss, 3500);
-    return () => clearTimeout(t);
+    const timer = setTimeout(onDismiss, 3500);
+    return () => clearTimeout(timer);
   }, []);
   return (
     <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-xl text-sm font-medium animate-slide-up ${
@@ -352,9 +365,8 @@ function Toast({ message, type = 'success', onDismiss }) {
 }
 
 // ── Mini Cart Drawer ──────────────────────────────────────────
-const DECORATION_LABELS = { dtg: 'DTG', embroidery: 'Embroidery', screen: 'Screen' };
-
 function MiniCartItem({ item, onRemove, onQtyChange }) {
+  const { t } = useTranslation();
   const { variant, product, thumbnailUrl, config, quantity } = item;
   const [imgErr, setImgErr] = useState(false);
   const lineTotal = (variant?.price_cents ?? 0) * quantity;
@@ -374,7 +386,7 @@ function MiniCartItem({ item, onRemove, onQtyChange }) {
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-slate-800 truncate">{product?.name || 'Custom T-Shirt'}</p>
+        <p className="text-sm font-semibold text-slate-800 truncate">{product?.name || t('product.customTShirt')}</p>
         <div className="flex flex-wrap gap-1 mt-0.5">
           {config?.color && (
             <span className="text-xs text-slate-500">{config.color}</span>
@@ -383,7 +395,7 @@ function MiniCartItem({ item, onRemove, onQtyChange }) {
             <span className="text-xs text-slate-500">· {config.size}</span>
           )}
           {config?.decoration && (
-            <span className="text-xs text-indigo-500">· {DECORATION_LABELS[config.decoration] || config.decoration}</span>
+            <span className="text-xs text-indigo-500">· {t(`product.decoration.${config.decoration}`) || config.decoration}</span>
           )}
         </div>
 
@@ -419,6 +431,7 @@ function MiniCartItem({ item, onRemove, onQtyChange }) {
 }
 
 function MiniCart({ open, onClose, items, loading, onRemove, onQtyChange }) {
+  const { t } = useTranslation();
   const subtotal = items.reduce((acc, it) => acc + (it.variant?.price_cents ?? 0) * it.quantity, 0);
   const itemCount = items.reduce((acc, it) => acc + it.quantity, 0);
 
@@ -443,7 +456,7 @@ function MiniCart({ open, onClose, items, loading, onRemove, onQtyChange }) {
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
           <h2 className="font-bold text-slate-900 text-base">
-            Your cart
+            {t('product.miniCart.heading')}
             {itemCount > 0 && <span className="ml-1.5 text-sm font-normal text-slate-400">({itemCount})</span>}
           </h2>
           <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors">
@@ -472,7 +485,7 @@ function MiniCart({ open, onClose, items, loading, onRemove, onQtyChange }) {
               <svg className="w-12 h-12 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
               </svg>
-              <p className="text-sm text-slate-500">Your cart is empty</p>
+              <p className="text-sm text-slate-500">{t('product.miniCart.empty')}</p>
             </div>
           ) : (
             items.map(item => (
@@ -485,7 +498,7 @@ function MiniCart({ open, onClose, items, loading, onRemove, onQtyChange }) {
         {items.length > 0 && (
           <div className="border-t border-slate-100 px-5 py-4 flex flex-col gap-3">
             <div className="flex justify-between text-sm font-semibold text-slate-800">
-              <span>Subtotal</span>
+              <span>{t('product.miniCart.subtotal')}</span>
               <span>{formatPrice(subtotal)}</span>
             </div>
             <Link
@@ -493,7 +506,7 @@ function MiniCart({ open, onClose, items, loading, onRemove, onQtyChange }) {
               onClick={onClose}
               className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm text-center transition-colors active:scale-[0.98]"
             >
-              Go to cart →
+              {t('product.miniCart.goToCart')}
             </Link>
           </div>
         )}
@@ -504,6 +517,7 @@ function MiniCart({ open, onClose, items, loading, onRemove, onQtyChange }) {
 
 // ── Inline Cart Preview (right column) ───────────────────────
 function CartPreviewPanel({ items, loading, onRemove, onQtyChange }) {
+  const { t } = useTranslation();
   const subtotal = items.reduce((acc, it) => acc + (it.variant?.price_cents ?? 0) * it.quantity, 0);
   const itemCount = items.reduce((acc, it) => acc + it.quantity, 0);
 
@@ -531,8 +545,8 @@ function CartPreviewPanel({ items, loading, onRemove, onQtyChange }) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <p className="text-sm font-bold text-slate-800">
-          Your cart
-          <span className="ml-1.5 text-indigo-600">({itemCount} {itemCount === 1 ? 'item' : 'items'})</span>
+          {t('product.miniCart.heading')}
+          <span className="ml-1.5 text-indigo-600">({t('product.miniCart.items', { count: itemCount })})</span>
         </p>
         <span className="text-sm font-semibold text-slate-700">{formatPrice(subtotal)}</span>
       </div>
@@ -549,7 +563,7 @@ function CartPreviewPanel({ items, loading, onRemove, onQtyChange }) {
         to="/cart"
         className="flex items-center justify-center gap-2 w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-sm transition-colors active:scale-[0.98]"
       >
-        Go to cart
+        {t('product.miniCart.goToCartLink')}
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3"/>
         </svg>
@@ -590,6 +604,7 @@ function StarPicker({ value, onChange }) {
 
 // ── Reviews Section ───────────────────────────────────────────
 function ReviewsSection({ slug, product, session }) {
+  const { t } = useTranslation();
   const [reviews, setReviews] = useState([]);
   const [loadingReviews, setLoadingReviews] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -620,7 +635,7 @@ function ReviewsSection({ slug, product, session }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (rating === 0) { setSubmitError('Please select a rating.'); return; }
+    if (rating === 0) { setSubmitError(t('product.reviews.selectRating')); return; }
     setSubmitError('');
     setSubmitting(true);
     try {
@@ -657,7 +672,7 @@ function ReviewsSection({ slug, product, session }) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-lg font-bold text-slate-900">Customer Reviews</h2>
+          <h2 className="text-lg font-bold text-slate-900">{t('product.reviews.heading')}</h2>
           {displayCount > 0 && (
             <div className="flex items-center gap-2 mt-1">
               <StarRating rating={displayRating} count={displayCount} />
@@ -669,11 +684,11 @@ function ReviewsSection({ slug, product, session }) {
             onClick={() => setShowForm(true)}
             className="self-start sm:self-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl transition-colors"
           >
-            Write a Review
+            {t('product.reviews.writeReview')}
           </button>
         )}
         {submitDone && (
-          <span className="text-sm text-emerald-600 font-medium">Thanks for your review!</span>
+          <span className="text-sm text-emerald-600 font-medium">{t('product.reviews.thanks')}</span>
         )}
       </div>
 
@@ -704,31 +719,31 @@ function ReviewsSection({ slug, product, session }) {
           onSubmit={handleSubmit}
           className="bg-white rounded-2xl border border-slate-200 p-5 mb-8 space-y-4 shadow-sm"
         >
-          <h3 className="font-semibold text-slate-800">Your Review</h3>
+          <h3 className="font-semibold text-slate-800">{t('product.reviews.yourReview')}</h3>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Rating</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">{t('product.reviews.rating')}</label>
             <StarPicker value={rating} onChange={setRating} />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Name <span className="text-slate-400 font-normal">(optional)</span></label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">{t('product.reviews.name')}</label>
             <input
               type="text"
               value={reviewerName}
               onChange={(e) => setReviewerName(e.target.value)}
-              placeholder="Your name"
+              placeholder={t('product.reviews.namePlaceholder')}
               maxLength={80}
               className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Comment <span className="text-slate-400 font-normal">(optional)</span></label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">{t('product.reviews.comment')}</label>
             <textarea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              placeholder="What did you think of this product?"
+              placeholder={t('product.reviews.commentPlaceholder')}
               rows={3}
               maxLength={1000}
               className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
@@ -743,14 +758,14 @@ function ReviewsSection({ slug, product, session }) {
               disabled={submitting}
               className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors"
             >
-              {submitting ? 'Submitting…' : 'Submit Review'}
+              {submitting ? t('product.reviews.submitting') : t('product.reviews.submit')}
             </button>
             <button
               type="button"
               onClick={() => { setShowForm(false); setSubmitError(''); }}
               className="px-5 py-2 border border-slate-200 text-slate-600 text-sm font-medium rounded-xl hover:border-slate-300 transition-colors"
             >
-              Cancel
+              {t('product.reviews.cancel')}
             </button>
           </div>
         </form>
@@ -768,7 +783,7 @@ function ReviewsSection({ slug, product, session }) {
           ))}
         </div>
       ) : reviews.length === 0 ? (
-        <p className="text-sm text-slate-400">No reviews yet. Be the first to write one!</p>
+        <p className="text-sm text-slate-400">{t('product.reviews.noReviews')}</p>
       ) : (
         <div className="space-y-5">
           {reviews.map((review) => (
@@ -782,7 +797,7 @@ function ReviewsSection({ slug, product, session }) {
                   ))}
                 </div>
                 <span className="text-sm font-semibold text-slate-800">
-                  {review.reviewer_name || 'Anonymous'}
+                  {review.reviewer_name || t('product.reviews.anonymous')}
                 </span>
                 <span className="text-xs text-slate-400">
                   {new Date(review.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
@@ -801,6 +816,7 @@ function ReviewsSection({ slug, product, session }) {
 
 // ── Main PDP ─────────────────────────────────────────────────
 export default function ProductDetailPage() {
+  const { t } = useTranslation();
   const { slug } = useParams();
   const { user, session } = useAuth();
   const { isWished, toggle: toggleWish } = useWishlist();
@@ -1028,7 +1044,7 @@ export default function ProductDetailPage() {
   // Add to cart: upload front + back designs independently, then persist
   const handleAddToCart = async () => {
     if (!selectedVariant) {
-      setToast({ message: 'Please select a size', type: 'error' });
+      setToast({ message: t('product.selectSize'), type: 'error' });
       return;
     }
     setAddingToCart(true);
@@ -1082,7 +1098,7 @@ export default function ProductDetailPage() {
       await addToCart({ variantId: selectedVariant.id, quantity: 1, config, anonymousId: anonId });
       await loadCart();
       setMiniCartOpen(true);
-      setToast({ message: 'Added to cart!', type: 'success' });
+      setToast({ message: t('product.addedToCart'), type: 'success' });
     } catch (err) {
       setToast({ message: err.message || 'Failed to add to cart', type: 'error' });
     } finally {
@@ -1097,7 +1113,7 @@ export default function ProductDetailPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-4 text-slate-400">
           <div className="w-10 h-10 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
-          <p className="text-sm">Loading product…</p>
+          <p className="text-sm">{t('product.loading')}</p>
         </div>
       </div>
     );
@@ -1108,10 +1124,10 @@ export default function ProductDetailPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-3">
           <p className="text-5xl">😕</p>
-          <p className="text-lg font-semibold text-slate-700">Product not found</p>
+          <p className="text-lg font-semibold text-slate-700">{t('product.notFound')}</p>
           <p className="text-sm text-slate-500">{error}</p>
           <Link to="/" className="inline-block mt-4 px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors">
-            Back to home
+            {t('product.backToHome')}
           </Link>
         </div>
       </div>
@@ -1121,13 +1137,13 @@ export default function ProductDetailPage() {
   // Add-to-cart button label
   const hasPendingFile = sideDesigns.front.pendingFile || sideDesigns.back.pendingFile;
   const cartBtnLabel = (() => {
-    if (isOOS) return 'Out of Stock';
-    if (!addingToCart) return 'Add to Cart';
-    if (hasPendingFile && uploadProgress < 100) return `Uploading… ${uploadProgress}%`;
+    if (isOOS) return t('product.outOfStock');
+    if (!addingToCart) return t('product.addToCart');
+    if (hasPendingFile && uploadProgress < 100) return t('product.uploading', { progress: uploadProgress });
     return (
       <span className="flex items-center justify-center gap-2">
         <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-        Adding…
+        {t('product.addingToCart')}
       </span>
     );
   })();
@@ -1135,9 +1151,9 @@ export default function ProductDetailPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       <Helmet>
-        <title>{product.name} | PrintShop</title>
+        <title>{t('product.meta.title', { name: product.name })}</title>
         <meta name="description" content={product.description ? product.description.slice(0, 155) : `Order a custom ${product.name} — upload your design and we'll print and ship it in 48h.`} />
-        <meta property="og:title" content={`${product.name} | PrintShop`} />
+        <meta property="og:title" content={t('product.meta.title', { name: product.name })} />
         <meta property="og:description" content={product.description ? product.description.slice(0, 155) : `Custom printed ${product.name}`} />
         {images[0]?.url && <meta property="og:image" content={images[0].url} />}
         <meta property="og:type" content="product" />
@@ -1149,19 +1165,20 @@ export default function ProductDetailPage() {
             Print<span className="text-indigo-600">Shop</span>
           </Link>
           <div className="flex items-center gap-3">
+            <LanguageSwitcher />
             {user ? (
               <Link to="/account" className="text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors hidden sm:block">
-                My Account
+                {t('nav.myAccount')}
               </Link>
             ) : (
               <Link to="/login" className="text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors hidden sm:block">
-                Sign In
+                {t('nav.signIn')}
               </Link>
             )}
             <button
               onClick={openMiniCart}
               className="p-2 text-slate-500 hover:text-indigo-600 transition-colors"
-              title="Cart"
+              title={t('nav.cart')}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
@@ -1204,7 +1221,7 @@ export default function ProductDetailPage() {
                 {user && (
                   <button
                     onClick={() => toggleWish(product.id)}
-                    aria-label={isWished(product.id) ? 'Remove from wishlist' : 'Save to wishlist'}
+                    aria-label={isWished(product.id) ? t('product.removeFromWishlist') : t('product.saveToWishlist')}
                     className={`flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full border-2 transition-all mt-1 ${
                       isWished(product.id)
                         ? 'border-rose-400 bg-rose-50 text-rose-500'
@@ -1224,7 +1241,7 @@ export default function ProductDetailPage() {
                   {selectedVariant ? formatPrice(selectedVariant.price_cents) : priceRange || '—'}
                 </span>
                 {variants.length > 0 && !selectedVariant && (
-                  <span className="text-sm text-slate-400">Select size for exact price</span>
+                  <span className="text-sm text-slate-400">{t('product.selectExact')}</span>
                 )}
               </div>
             </div>
@@ -1234,10 +1251,8 @@ export default function ProductDetailPage() {
             {variants.length === 0 ? (
               /* ── No variants yet ────────────────────────────── */
               <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-center space-y-2">
-                <p className="text-sm font-semibold text-amber-700">No options available yet</p>
-                <p className="text-xs text-amber-600">
-                  This product isn't ready for purchase. Please check back soon.
-                </p>
+                <p className="text-sm font-semibold text-amber-700">{t('product.noOptions')}</p>
+                <p className="text-xs text-amber-600">{t('product.noOptionsBody')}</p>
               </div>
             ) : (
               <>
@@ -1290,11 +1305,11 @@ export default function ProductDetailPage() {
                   <>
                     {' · '}
                     {selectedVariant.stock === 0 ? (
-                      <span className="text-red-500 font-medium">Out of stock</span>
+                      <span className="text-red-500 font-medium">{t('product.stockOut')}</span>
                     ) : selectedVariant.stock <= 5 ? (
-                      <span className="text-amber-600 font-medium">Only {selectedVariant.stock} left</span>
+                      <span className="text-amber-600 font-medium">{t('product.stockLow', { count: selectedVariant.stock })}</span>
                     ) : (
-                      <span className="text-green-600">{selectedVariant.stock} in stock</span>
+                      <span className="text-green-600">{t('product.stockIn', { count: selectedVariant.stock })}</span>
                     )}
                   </>
                 )}
@@ -1315,7 +1330,7 @@ export default function ProductDetailPage() {
         {/* ── You might also like ────────────────────────── */}
         {relatedProducts.length > 0 && (
           <div className="pt-4 pb-8">
-            <h2 className="text-lg font-semibold text-slate-800 mb-4">You might also like</h2>
+            <h2 className="text-lg font-semibold text-slate-800 mb-4">{t('product.related')}</h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {relatedProducts.map((p) => (
                 <Link

@@ -2,9 +2,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import { useWishlist } from '../context/WishlistContext';
 import { fetchWishlist } from '../api/products';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 
 const API = import.meta.env.VITE_API_URL || '/api';
 
@@ -25,16 +27,27 @@ const STATUS_STYLES = {
   cancelled:  'bg-red-50 text-red-700 border-red-200',
 };
 
+const STATUS_KEY = {
+  pending:    'account.status.pending',
+  paid:       'account.status.paid',
+  processing: 'account.status.processing',
+  fulfilled:  'account.status.fulfilled',
+  shipped:    'account.status.shipped',
+  cancelled:  'account.status.cancelled',
+};
+
 function StatusBadge({ status }) {
+  const { t } = useTranslation();
   return (
     <span className={`px-2 py-0.5 rounded-full border text-xs font-semibold capitalize ${STATUS_STYLES[status] || 'bg-slate-50 text-slate-600 border-slate-200'}`}>
-      {status}
+      {t(STATUS_KEY[status] || status)}
     </span>
   );
 }
 
 // ── Orders Tab ─────────────────────────────────────────────────
 function OrdersTab({ session }) {
+  const { t } = useTranslation();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -48,11 +61,11 @@ function OrdersTab({ session }) {
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) setOrders(data);
-        else setError(data.error || 'Could not load orders.');
+        else setError(data.error || t('account.orders.couldNotLoad'));
       })
-      .catch(() => setError('Could not load orders.'))
+      .catch(() => setError(t('account.orders.couldNotLoad')))
       .finally(() => setLoading(false));
-  }, [session]);
+  }, [session, t]);
 
   if (loading) {
     return (
@@ -74,10 +87,10 @@ function OrdersTab({ session }) {
         <svg className="w-12 h-12 mx-auto mb-3 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
         </svg>
-        <p className="font-medium text-slate-500">No orders yet</p>
-        <p className="text-sm mt-1">Your completed orders will appear here.</p>
+        <p className="font-medium text-slate-500">{t('account.orders.empty.heading')}</p>
+        <p className="text-sm mt-1">{t('account.orders.empty.body')}</p>
         <Link to="/products" className="mt-4 inline-block text-indigo-600 hover:underline text-sm font-medium">
-          Browse products →
+          {t('account.orders.empty.cta')}
         </Link>
       </div>
     );
@@ -94,7 +107,9 @@ function OrdersTab({ session }) {
             <div className="flex items-center gap-4">
               <div>
                 <p className="text-sm font-semibold text-slate-800">{formatDate(order.created_at)}</p>
-                <p className="text-xs text-slate-400 mt-0.5">{order.items?.length ?? 0} item{order.items?.length !== 1 ? 's' : ''}</p>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {t('account.orders.itemCount', { count: order.items?.length ?? 0 })}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-4">
@@ -114,9 +129,9 @@ function OrdersTab({ session }) {
               {(order.items || []).map((item) => (
                 <div key={item.id} className="flex items-center justify-between text-sm">
                   <div>
-                    <p className="font-medium text-slate-800">{item.productName || 'Custom T-Shirt'}</p>
+                    <p className="font-medium text-slate-800">{item.productName || t('checkout.summary.defaultProduct')}</p>
                     <p className="text-xs text-slate-400">
-                      {item.variant?.color_name} · {item.variant?.size} · qty {item.quantity}
+                      {item.variant?.color_name} · {item.variant?.size} · {t('account.orders.qty', { n: item.quantity })}
                     </p>
                   </div>
                   <p className="font-semibold text-slate-700">{formatPrice(item.price_cents * item.quantity)}</p>
@@ -132,6 +147,7 @@ function OrdersTab({ session }) {
 
 // ── Address Tab ────────────────────────────────────────────────
 function AddressTab({ session }) {
+  const { t } = useTranslation();
   const [form, setForm] = useState({
     default_shipping_line1: '',
     default_shipping_line2: '',
@@ -181,14 +197,14 @@ function AddressTab({ session }) {
     });
     const data = await res.json();
     setSaving(false);
-    if (!res.ok) { setError(data.error || 'Could not save address.'); return; }
+    if (!res.ok) { setError(data.error || t('account.couldNotSaveAddress')); return; }
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   }
 
-  const field = (key, label, placeholder, props = {}) => (
+  const field = (key, labelKey, placeholder, props = {}) => (
     <div className="flex flex-col gap-1">
-      <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">{label}</label>
+      <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">{t(labelKey)}</label>
       <input
         value={form[key]}
         onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
@@ -204,14 +220,14 @@ function AddressTab({ session }) {
   return (
     <form onSubmit={handleSave} className="space-y-4 max-w-lg">
       {error && <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">{error}</div>}
-      {saved && <div className="p-3.5 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm">Address saved!</div>}
+      {saved && <div className="p-3.5 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm">{t('account.address.saved')}</div>}
 
-      {field('default_shipping_line1', 'Address', '123 Main St')}
-      {field('default_shipping_line2', 'Apartment, suite, etc.', 'Apt 4B (optional)')}
+      {field('default_shipping_line1', 'checkout.shipping.address', '123 Main St')}
+      {field('default_shipping_line2', 'account.address.apartment', 'Apt 4B')}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-        {field('default_shipping_city', 'City', 'New York')}
-        {field('default_shipping_state', 'State', 'NY')}
-        {field('default_shipping_postal_code', 'ZIP', '10001')}
+        {field('default_shipping_city', 'account.address.city', 'New York')}
+        {field('default_shipping_state', 'account.address.state', 'NY')}
+        {field('default_shipping_postal_code', 'account.address.zip', '10001')}
       </div>
 
       <button
@@ -219,7 +235,7 @@ function AddressTab({ session }) {
         disabled={saving}
         className="mt-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white font-semibold rounded-xl transition-colors text-sm"
       >
-        {saving ? 'Saving…' : 'Save address'}
+        {saving ? t('common.saving') : t('account.address.saveButton')}
       </button>
     </form>
   );
@@ -227,6 +243,7 @@ function AddressTab({ session }) {
 
 // ── Wishlist Tab ───────────────────────────────────────────────
 function WishlistTab({ session }) {
+  const { t } = useTranslation();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const { toggle } = useWishlist();
@@ -261,10 +278,10 @@ function WishlistTab({ session }) {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
             d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
         </svg>
-        <p className="font-medium text-slate-500">No saved items</p>
-        <p className="text-sm mt-1">Tap the heart icon on any product to save it here.</p>
+        <p className="font-medium text-slate-500">{t('account.wishlist.empty.heading')}</p>
+        <p className="text-sm mt-1">{t('account.wishlist.empty.body')}</p>
         <Link to="/products" className="mt-4 inline-block text-indigo-600 hover:underline text-sm font-medium">
-          Browse products →
+          {t('account.wishlist.empty.cta')}
         </Link>
       </div>
     );
@@ -288,14 +305,14 @@ function WishlistTab({ session }) {
             <div className="p-3">
               <p className="text-sm font-semibold text-slate-800 line-clamp-2 leading-snug">{item.name}</p>
               {item.minPrice && (
-                <p className="text-xs text-slate-500 mt-0.5">From {(item.minPrice / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</p>
+                <p className="text-xs text-slate-500 mt-0.5">{t('common.from')} {(item.minPrice / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</p>
               )}
             </div>
           </Link>
           {/* Remove heart button */}
           <button
             onClick={() => handleRemove(item.productId)}
-            aria-label="Remove from wishlist"
+            aria-label={t('common.remove')}
             className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white/90 text-rose-500 shadow opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-50"
           >
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -311,6 +328,7 @@ function WishlistTab({ session }) {
 
 // ── Profile Tab ────────────────────────────────────────────────
 function ProfileTab({ user, session }) {
+  const { t } = useTranslation();
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -343,7 +361,7 @@ function ProfileTab({ user, session }) {
     });
     const data = await res.json();
     setSaving(false);
-    if (!res.ok) { setError(data.error || 'Could not save profile.'); return; }
+    if (!res.ok) { setError(data.error || t('account.couldNotSaveProfile')); return; }
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   }
@@ -353,26 +371,26 @@ function ProfileTab({ user, session }) {
   return (
     <form onSubmit={handleSave} className="space-y-4 max-w-sm">
       {error && <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">{error}</div>}
-      {saved && <div className="p-3.5 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm">Profile saved!</div>}
+      {saved && <div className="p-3.5 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm">{t('account.profile.saved')}</div>}
 
       <div className="flex flex-col gap-1">
-        <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Full name</label>
+        <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">{t('account.profile.fullName')}</label>
         <input
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
-          placeholder="Your name"
+          placeholder={t('account.profile.fullName')}
           className="px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition"
         />
       </div>
 
       <div className="flex flex-col gap-1">
-        <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Email</label>
+        <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">{t('account.profile.email')}</label>
         <input
           value={user?.email || ''}
           readOnly
           className="px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-500 cursor-not-allowed"
         />
-        <p className="text-xs text-slate-400">Email cannot be changed here.</p>
+        <p className="text-xs text-slate-400">{t('account.profile.emailReadonly')}</p>
       </div>
 
       <button
@@ -380,7 +398,7 @@ function ProfileTab({ user, session }) {
         disabled={saving}
         className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white font-semibold rounded-xl transition-colors text-sm"
       >
-        {saving ? 'Saving…' : 'Save profile'}
+        {saving ? t('common.saving') : t('account.profile.saveButton')}
       </button>
     </form>
   );
@@ -388,6 +406,7 @@ function ProfileTab({ user, session }) {
 
 // ── Page ───────────────────────────────────────────────────────
 export default function AccountPage() {
+  const { t } = useTranslation();
   const { user, session, loading, signOut } = useAuth();
   const navigate = useNavigate();
   const [tab, setTab] = useState('orders');
@@ -409,10 +428,17 @@ export default function AccountPage() {
     );
   }
 
+  const tabs = [
+    { id: 'orders', label: t('account.tabs.orders') },
+    { id: 'wishlist', label: t('account.tabs.wishlist') },
+    { id: 'address', label: t('account.tabs.address') },
+    { id: 'profile', label: t('account.tabs.profile') },
+  ];
+
   return (
     <div className="min-h-screen bg-slate-50">
       <Helmet>
-        <title>My Account | PrintShop</title>
+        <title>{t('account.meta.title')}</title>
         <meta name="robots" content="noindex" />
       </Helmet>
       {/* Header */}
@@ -422,14 +448,15 @@ export default function AccountPage() {
             Print<span className="text-indigo-600">Shop</span>
           </Link>
           <nav className="flex items-center gap-5 text-sm font-medium text-slate-600">
-            <Link to="/products" className="hover:text-indigo-600 transition-colors hidden sm:block">Products</Link>
-            <Link to="/cart" className="p-2 text-slate-500 hover:text-indigo-600 transition-colors" title="Cart">
+            <Link to="/products" className="hover:text-indigo-600 transition-colors hidden sm:block">{t('nav.products')}</Link>
+            <LanguageSwitcher />
+            <Link to="/cart" className="p-2 text-slate-500 hover:text-indigo-600 transition-colors" title={t('nav.cart')}>
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
               </svg>
             </Link>
             <button onClick={handleSignOut} className="text-slate-500 hover:text-red-600 transition-colors text-sm font-medium">
-              Sign out
+              {t('nav.signOut')}
             </button>
           </nav>
         </div>
@@ -438,18 +465,13 @@ export default function AccountPage() {
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
         {/* Page title */}
         <div className="mb-8">
-          <h1 className="text-2xl font-extrabold text-slate-900">My Account</h1>
+          <h1 className="text-2xl font-extrabold text-slate-900">{t('account.heading')}</h1>
           <p className="text-sm text-slate-500 mt-1">{user.email}</p>
         </div>
 
         {/* Tabs */}
         <div className="flex gap-1 bg-slate-100 p-1 rounded-xl mb-8 w-fit">
-          {[
-            { id: 'orders', label: 'Orders' },
-            { id: 'wishlist', label: 'Wishlist' },
-            { id: 'address', label: 'Saved Address' },
-            { id: 'profile', label: 'Profile' },
-          ].map(({ id, label }) => (
+          {tabs.map(({ id, label }) => (
             <button
               key={id}
               onClick={() => setTab(id)}

@@ -1,6 +1,7 @@
 // src/pages/AdminDashboardPage.jsx
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
@@ -78,6 +79,7 @@ function Skeleton({ className }) {
 
 // ── Page ──────────────────────────────────────────────────────
 export default function AdminDashboardPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -128,7 +130,7 @@ export default function AdminDashboardPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
         {/* Title */}
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
+          <h1 className="text-2xl font-bold text-slate-900">{t('admin.dashboard.heading')}</h1>
           <button
             onClick={load}
             disabled={loading}
@@ -137,7 +139,7 @@ export default function AdminDashboardPage() {
             <svg className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
-            Refresh
+            {t('admin.dashboard.refresh')}
           </button>
         </div>
 
@@ -152,9 +154,9 @@ export default function AdminDashboardPage() {
           ) : (
             <>
               <StatCard
-                label="Total revenue"
+                label={t('admin.dashboard.stats.totalRevenue')}
                 value={formatPrice(stats.total_revenue_cents || 0)}
-                sub="All paid orders"
+                sub={t('admin.dashboard.stats.totalRevenuesSub')}
                 accent="indigo"
                 icon={
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -163,7 +165,7 @@ export default function AdminDashboardPage() {
                 }
               />
               <StatCard
-                label="This month"
+                label={t('admin.dashboard.stats.thisMonth')}
                 value={formatPrice(stats.month_revenue_cents || 0)}
                 sub={new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })}
                 accent="green"
@@ -174,9 +176,9 @@ export default function AdminDashboardPage() {
                 }
               />
               <StatCard
-                label="Total orders"
+                label={t('admin.dashboard.stats.totalOrders')}
                 value={stats.total_orders?.toLocaleString() || '0'}
-                sub={`${stats.pending_orders || 0} pending`}
+                sub={t('admin.dashboard.stats.pendingOrders', { count: stats.pending_orders || 0 })}
                 accent="yellow"
                 icon={
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -185,9 +187,9 @@ export default function AdminDashboardPage() {
                 }
               />
               <StatCard
-                label="Products"
+                label={t('admin.dashboard.stats.products')}
                 value={stats.total_products?.toLocaleString() || '0'}
-                sub="In catalog"
+                sub={t('admin.dashboard.stats.productsSub')}
                 accent="slate"
                 icon={
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -203,8 +205,8 @@ export default function AdminDashboardPage() {
         <div className="bg-white rounded-2xl border border-slate-200 p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-base font-bold text-slate-900">Revenue — last 30 days</h2>
-              <p className="text-xs text-slate-400 mt-0.5">Paid & fulfilled orders only</p>
+              <h2 className="text-base font-bold text-slate-900">{t('admin.dashboard.chart.heading')}</h2>
+              <p className="text-xs text-slate-400 mt-0.5">{t('admin.dashboard.chart.subtitle')}</p>
             </div>
             {!loading && hasChartData && (
               <p className="text-sm font-semibold text-slate-700">
@@ -221,7 +223,7 @@ export default function AdminDashboardPage() {
                 <svg className="w-10 h-10 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
-                <p className="text-sm text-slate-400">No paid orders in the last 30 days</p>
+                <p className="text-sm text-slate-400">{t('admin.dashboard.chart.noData')}</p>
               </div>
             </div>
           ) : (
@@ -269,13 +271,13 @@ export default function AdminDashboardPage() {
 
           {/* Top products */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6">
-            <h2 className="text-base font-bold text-slate-900 mb-4">Top products</h2>
+            <h2 className="text-base font-bold text-slate-900 mb-4">{t('admin.dashboard.topProducts.heading')}</h2>
             {loading ? (
               <div className="space-y-3">
                 {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-10" />)}
               </div>
             ) : topProducts.length === 0 ? (
-              <p className="text-sm text-slate-400 py-6 text-center">No sales data yet.</p>
+              <p className="text-sm text-slate-400 py-6 text-center">{t('admin.dashboard.topProducts.noData')}</p>
             ) : (
               <div className="space-y-1">
                 {topProducts.map((product, i) => (
@@ -289,7 +291,7 @@ export default function AdminDashboardPage() {
                       <p className="text-sm font-semibold text-slate-800 truncate group-hover:text-indigo-600 transition-colors">
                         {product.name}
                       </p>
-                      <p className="text-xs text-slate-400">{product.units_sold} unit{product.units_sold !== 1 ? 's' : ''} sold</p>
+                      <p className="text-xs text-slate-400">{t('admin.dashboard.topProducts.unitsSold', { count: product.units_sold })}</p>
                     </div>
                     <p className="text-sm font-bold text-slate-700 flex-shrink-0">
                       {formatPrice(product.revenue_cents)}
@@ -303,9 +305,9 @@ export default function AdminDashboardPage() {
           {/* Recent orders */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-bold text-slate-900">Recent orders</h2>
+              <h2 className="text-base font-bold text-slate-900">{t('admin.dashboard.recentOrders.heading')}</h2>
               <Link to="/admin/orders" className="text-xs font-medium text-indigo-600 hover:underline">
-                View all →
+                {t('admin.dashboard.recentOrders.viewAll')}
               </Link>
             </div>
             {loading ? (
@@ -313,7 +315,7 @@ export default function AdminDashboardPage() {
                 {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12" />)}
               </div>
             ) : recentOrders.length === 0 ? (
-              <p className="text-sm text-slate-400 py-6 text-center">No orders yet.</p>
+              <p className="text-sm text-slate-400 py-6 text-center">{t('admin.dashboard.recentOrders.noData')}</p>
             ) : (
               <div className="space-y-1">
                 {recentOrders.map((order) => (
@@ -324,7 +326,7 @@ export default function AdminDashboardPage() {
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-slate-800 truncate">
-                        {order.shipping_name || order.shipping_email || 'Customer'}
+                        {order.shipping_name || order.shipping_email || t('admin.dashboard.recentOrders.customer')}
                       </p>
                       <p className="text-xs text-slate-400">{formatDate(order.created_at)}</p>
                     </div>

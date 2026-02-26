@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { useTranslation } from 'react-i18next';
 import { stripePromise } from '../lib/stripe';
 
 function formatPrice(cents) {
@@ -9,17 +10,17 @@ function formatPrice(cents) {
 }
 
 export default function OrderConfirmationPage() {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const [status, setStatus] = useState('loading'); // loading | success | processing | error
   const [amount, setAmount] = useState(null);
   const [email, setEmail] = useState(null);
 
-  const paymentIntentId = searchParams.get('payment_intent');
   const clientSecret = searchParams.get('payment_intent_client_secret');
 
   useEffect(() => {
     if (!stripePromise || !clientSecret) {
-      setStatus('success'); // fallback — show success anyway
+      setStatus('success');
       return;
     }
 
@@ -40,15 +41,21 @@ export default function OrderConfirmationPage() {
           setStatus('error');
         }
       } catch {
-        setStatus('success'); // show success on retrieval failure
+        setStatus('success');
       }
     });
   }, [clientSecret]);
 
+  const steps = [
+    { label: t('orderConfirmation.whatNext.step1.label'), done: true,  body: t('orderConfirmation.whatNext.step1.body') },
+    { label: t('orderConfirmation.whatNext.step2.label'), done: false, body: t('orderConfirmation.whatNext.step2.body') },
+    { label: t('orderConfirmation.whatNext.step3.label'), done: false, body: t('orderConfirmation.whatNext.step3.body') },
+  ];
+
   return (
     <div className="min-h-screen bg-slate-50">
       <Helmet>
-        <title>Order Confirmed | PrintShop</title>
+        <title>{t('orderConfirmation.meta.title')}</title>
         <meta name="robots" content="noindex" />
       </Helmet>
       {/* Top bar */}
@@ -80,32 +87,28 @@ export default function OrderConfirmationPage() {
             </div>
 
             <div className="space-y-2">
-              <h1 className="text-3xl font-extrabold text-slate-900">Order confirmed!</h1>
+              <h1 className="text-3xl font-extrabold text-slate-900">{t('orderConfirmation.success.heading')}</h1>
               <p className="text-slate-500 text-base leading-relaxed">
                 {email ? (
-                  <>A confirmation has been sent to <span className="font-semibold text-slate-700">{email}</span>.</>
+                  t('orderConfirmation.success.bodyWithEmail', { email })
                 ) : (
-                  <>Thank you for your order. We&apos;ll start printing right away.</>
+                  t('orderConfirmation.success.bodyNoEmail')
                 )}
               </p>
             </div>
 
             {amount && (
               <div className="bg-white rounded-2xl border border-slate-200 px-8 py-5 flex flex-col items-center gap-1">
-                <span className="text-sm text-slate-500">Amount charged</span>
+                <span className="text-sm text-slate-500">{t('orderConfirmation.success.amountCharged')}</span>
                 <span className="text-2xl font-bold text-slate-900">{formatPrice(amount)}</span>
               </div>
             )}
 
             {/* Timeline */}
             <div className="w-full bg-white rounded-2xl border border-slate-200 p-6 text-left">
-              <h2 className="font-bold text-slate-800 mb-4 text-sm">What happens next?</h2>
+              <h2 className="font-bold text-slate-800 mb-4 text-sm">{t('orderConfirmation.whatNext.heading')}</h2>
               <ol className="space-y-3">
-                {[
-                  { label: 'Order received', done: true, body: 'Your payment was processed successfully.' },
-                  { label: 'Printing in progress', done: false, body: 'We print your design using DTG within 1–2 business days.' },
-                  { label: 'Shipped', done: false, body: 'Estimated delivery: 3–5 business days after printing.' },
-                ].map((step, i) => (
+                {steps.map((step, i) => (
                   <li key={i} className="flex gap-3 items-start">
                     <div className={`mt-0.5 w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold ${
                       step.done ? 'bg-green-500 text-white' : 'bg-slate-100 text-slate-400'
@@ -130,13 +133,13 @@ export default function OrderConfirmationPage() {
                 to="/products/gildan-budget-unisex-tshirt"
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition-colors text-sm"
               >
-                Order another design
+                {t('orderConfirmation.success.orderAnother')}
               </Link>
               <Link
                 to="/"
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded-xl transition-colors text-sm border border-slate-200"
               >
-                Back to home
+                {t('orderConfirmation.success.backToHome')}
               </Link>
             </div>
           </div>
@@ -150,10 +153,12 @@ export default function OrderConfirmationPage() {
               </svg>
             </div>
             <div className="space-y-2">
-              <h1 className="text-2xl font-bold text-slate-900">Payment processing</h1>
-              <p className="text-slate-500">Your payment is being processed. We&apos;ll confirm your order shortly.</p>
+              <h1 className="text-2xl font-bold text-slate-900">{t('orderConfirmation.processing.heading')}</h1>
+              <p className="text-slate-500">{t('orderConfirmation.processing.body')}</p>
             </div>
-            <Link to="/" className="text-indigo-600 hover:underline text-sm font-medium">Back to home</Link>
+            <Link to="/" className="text-indigo-600 hover:underline text-sm font-medium">
+              {t('orderConfirmation.processing.backToHome')}
+            </Link>
           </div>
         )}
 
@@ -165,14 +170,14 @@ export default function OrderConfirmationPage() {
               </svg>
             </div>
             <div className="space-y-2">
-              <h1 className="text-2xl font-bold text-slate-900">Payment unsuccessful</h1>
-              <p className="text-slate-500">Something went wrong with your payment. Please try again.</p>
+              <h1 className="text-2xl font-bold text-slate-900">{t('orderConfirmation.failed.heading')}</h1>
+              <p className="text-slate-500">{t('orderConfirmation.failed.body')}</p>
             </div>
             <Link
               to="/checkout"
               className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm"
             >
-              Try again
+              {t('orderConfirmation.failed.backToHome')}
             </Link>
           </div>
         )}

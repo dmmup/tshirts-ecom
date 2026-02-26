@@ -2,8 +2,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { useTranslation } from 'react-i18next';
 import { fetchCart, updateCartItem, removeCartItem } from '../api/products';
 import { useAuth } from '../context/AuthContext';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 
 // ── Helpers ───────────────────────────────────────────────────
 function getAnonymousId() {
@@ -37,19 +39,20 @@ function Toast({ message, onDismiss }) {
 
 // ── Empty State ───────────────────────────────────────────────
 function EmptyCart() {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center justify-center py-28 text-center">
       <svg className="w-20 h-20 text-slate-200 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.2}
           d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
       </svg>
-      <h2 className="text-xl font-bold text-slate-800 mb-2">Your cart is empty</h2>
-      <p className="text-slate-500 text-sm mb-8">Add a custom design to get started.</p>
+      <h2 className="text-xl font-bold text-slate-800 mb-2">{t('cart.empty.heading')}</h2>
+      <p className="text-slate-500 text-sm mb-8">{t('cart.empty.body')}</p>
       <Link
         to="/products/gildan-budget-unisex-tshirt"
         className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition-colors text-sm"
       >
-        Start designing
+        {t('cart.empty.cta')}
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
         </svg>
@@ -60,6 +63,7 @@ function EmptyCart() {
 
 // ── Item Card ─────────────────────────────────────────────────
 function ItemCard({ item, onQuantityChange, onRemove }) {
+  const { t } = useTranslation();
   const { variant, product, thumbnailUrl, config, quantity } = item;
   const [imgError, setImgError] = useState(false);
   const [designImgError, setDesignImgError] = useState(false);
@@ -131,7 +135,7 @@ function ItemCard({ item, onQuantityChange, onRemove }) {
           <button
             onClick={() => onRemove(item.id)}
             className="flex-shrink-0 p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-            title="Remove item"
+            title={t('cart.remove')}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -143,7 +147,7 @@ function ItemCard({ item, onQuantityChange, onRemove }) {
         {/* Design preview */}
         {config?.design_preview_url && !designImgError && (
           <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400">Design:</span>
+            <span className="text-xs text-slate-400">{t('cart.design')}</span>
             <img
               src={config.design_preview_url}
               alt="Design preview"
@@ -179,7 +183,7 @@ function ItemCard({ item, onQuantityChange, onRemove }) {
           <div className="text-right">
             <p className="text-sm font-bold text-slate-900">{formatPrice(lineTotal)}</p>
             {quantity > 1 && (
-              <p className="text-xs text-slate-400">{formatPrice(price)} each</p>
+              <p className="text-xs text-slate-400">{formatPrice(price)} {t('cart.each')}</p>
             )}
           </div>
         </div>
@@ -190,25 +194,26 @@ function ItemCard({ item, onQuantityChange, onRemove }) {
 
 // ── Order Summary ─────────────────────────────────────────────
 function OrderSummary({ items, onCheckout }) {
+  const { t } = useTranslation();
   const subtotal = items.reduce((acc, item) => acc + (item.variant?.price_cents ?? 0) * item.quantity, 0);
   const itemCount = items.reduce((acc, item) => acc + item.quantity, 0);
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex flex-col gap-4 sticky top-24">
-      <h2 className="font-bold text-slate-900 text-base">Order summary</h2>
+      <h2 className="font-bold text-slate-900 text-base">{t('cart.summary.heading')}</h2>
 
       <div className="flex justify-between text-sm text-slate-600">
-        <span>Subtotal ({itemCount} {itemCount === 1 ? 'item' : 'items'})</span>
+        <span>{t('cart.summary.subtotalCount', { count: itemCount })}</span>
         <span className="font-semibold text-slate-800">{formatPrice(subtotal)}</span>
       </div>
 
       <div className="flex justify-between text-sm text-slate-600">
-        <span>Shipping</span>
-        <span className="text-green-600 font-medium">Calculated at checkout</span>
+        <span>{t('cart.summary.shipping')}</span>
+        <span className="text-green-600 font-medium">{t('cart.summary.shippingCalc')}</span>
       </div>
 
       <div className="border-t border-slate-100 pt-4 flex justify-between font-bold text-slate-900">
-        <span>Total</span>
+        <span>{t('cart.summary.total')}</span>
         <span>{formatPrice(subtotal)}</span>
       </div>
 
@@ -216,14 +221,14 @@ function OrderSummary({ items, onCheckout }) {
         onClick={onCheckout}
         className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition-colors text-sm active:scale-[0.98]"
       >
-        Proceed to checkout
+        {t('cart.summary.checkout')}
       </button>
 
       <Link
         to="/products/gildan-budget-unisex-tshirt"
         className="text-center text-sm text-indigo-600 hover:text-indigo-700 font-medium transition-colors"
       >
-        ← Continue shopping
+        {t('cart.continueShopping')}
       </Link>
     </div>
   );
@@ -249,6 +254,7 @@ function SkeletonCard() {
 
 // ── Page ──────────────────────────────────────────────────────
 export default function CartPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [items, setItems] = useState([]);
@@ -276,7 +282,7 @@ export default function CartPage() {
       await updateCartItem(itemId, newQty);
     } catch {
       setItems(prev);
-      showToast('Could not update quantity. Please try again.');
+      showToast(t('cart.couldNotUpdate'));
     }
   }, [items, showToast]);
 
@@ -288,7 +294,7 @@ export default function CartPage() {
       await removeCartItem(itemId);
     } catch {
       setItems(prev);
-      showToast('Could not remove item. Please try again.');
+      showToast(t('cart.couldNotRemove'));
     }
   }, [items, showToast]);
 
@@ -300,7 +306,7 @@ export default function CartPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       <Helmet>
-        <title>Your Cart | PrintShop</title>
+        <title>{t('cart.meta.title')}</title>
         <meta name="robots" content="noindex" />
       </Helmet>
       {/* Minimal top bar */}
@@ -312,26 +318,27 @@ export default function CartPage() {
           <div className="flex items-center gap-5 text-sm font-medium text-slate-500">
             {user ? (
               <Link to="/account" className="hover:text-indigo-600 transition-colors hidden sm:block">
-                My Account
+                {t('cart.myAccount')}
               </Link>
             ) : (
               <Link to="/login" className="hover:text-indigo-600 transition-colors hidden sm:block">
-                Sign In
+                {t('cart.signIn')}
               </Link>
             )}
             <Link to="/products" className="hover:text-indigo-600 transition-colors">
-              ← Continue shopping
+              {t('cart.continueShopping')}
             </Link>
+            <LanguageSwitcher />
           </div>
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
         <h1 className="text-2xl font-bold text-slate-900 mb-8">
-          Your cart
+          {t('cart.heading')}
           {!loading && items.length > 0 && (
             <span className="ml-2 text-base font-normal text-slate-400">
-              ({items.reduce((a, i) => a + i.quantity, 0)} {items.reduce((a, i) => a + i.quantity, 0) === 1 ? 'item' : 'items'})
+              {t('cart.itemCount', { count: items.reduce((a, i) => a + i.quantity, 0) })}
             </span>
           )}
         </h1>

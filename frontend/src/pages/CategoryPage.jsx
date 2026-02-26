@@ -2,11 +2,14 @@
 import { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { useTranslation } from 'react-i18next';
 import { fetchCategoryProducts } from '../api/products';
 import { useAuth } from '../context/AuthContext';
 import CatalogView from '../components/CatalogView';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 
 export default function CategoryPage() {
+  const { t } = useTranslation();
   const { slug } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -32,11 +35,11 @@ export default function CategoryPage() {
 
   const breadcrumb = (
     <nav className="flex items-center gap-2 text-xs text-slate-400">
-      <Link to="/" className="hover:text-indigo-600 transition-colors">Home</Link>
+      <Link to="/" className="hover:text-indigo-600 transition-colors">{t('category.breadcrumb.home')}</Link>
       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
       </svg>
-      <Link to="/products" className="hover:text-indigo-600 transition-colors">Products</Link>
+      <Link to="/products" className="hover:text-indigo-600 transition-colors">{t('category.breadcrumb.products')}</Link>
       {category && (
         <>
           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -51,7 +54,7 @@ export default function CategoryPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       <Helmet>
-        <title>{category ? `${category.name} | PrintShop` : 'PrintShop'}</title>
+        <title>{category ? t('category.meta.title', { name: category.name }) : 'PrintShop'}</title>
         {category?.description && <meta name="description" content={category.description} />}
       </Helmet>
       {/* Navbar */}
@@ -62,18 +65,19 @@ export default function CategoryPage() {
           </Link>
           <nav className="flex items-center gap-6 text-sm font-medium text-slate-600">
             <Link to="/products" className="hover:text-indigo-600 transition-colors hidden sm:block">
-              Products
+              {t('nav.products')}
             </Link>
             {user ? (
               <Link to="/account" className="hover:text-indigo-600 transition-colors hidden sm:block">
-                My Account
+                {t('nav.myAccount')}
               </Link>
             ) : (
               <Link to="/login" className="hover:text-indigo-600 transition-colors hidden sm:block">
-                Sign In
+                {t('nav.signIn')}
               </Link>
             )}
-            <Link to="/cart" className="p-2 text-slate-500 hover:text-indigo-600 transition-colors" title="Cart">
+            <LanguageSwitcher />
+            <Link to="/cart" className="p-2 text-slate-500 hover:text-indigo-600 transition-colors" title={t('nav.cart')}>
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
                   d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />

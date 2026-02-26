@@ -1,0 +1,752 @@
+{
+  "nav": {
+    "products": "Products",
+    "howItWorks": "How it works",
+    "contact": "Contact",
+    "myAccount": "My Account",
+    "signIn": "Sign In",
+    "signOut": "Sign out",
+    "cart": "Cart",
+    "startDesigning": "Start designing"
+  },
+
+  "common": {
+    "loading": "Loading…",
+    "error": "Something went wrong",
+    "save": "Save",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "delete": "Delete",
+    "yes": "Yes",
+    "no": "No",
+    "back": "Back",
+    "refresh": "Refresh",
+    "optional": "optional",
+    "from": "From",
+    "free": "Free",
+    "apply": "Apply",
+    "remove": "Remove",
+    "close": "Close",
+    "view": "View →",
+    "search": "Search",
+    "noImage": "No image",
+    "backToHome": "Back to home",
+    "home": "Home"
+  },
+
+  "brand": {
+    "name": "PrintShop",
+    "tagline": "Custom T-Shirts & Apparel"
+  },
+
+  "announcement": {
+    "bar": "Custom T-shirts · Printed & shipped in 48h · No minimum order ·",
+    "cta": "Start designing →"
+  },
+
+  "home": {
+    "meta": {
+      "title": "PrintShop — Custom T-Shirts & Apparel",
+      "description": "Upload your artwork, choose your garment, and we'll print and ship it in 48h. No minimum order. 100% satisfaction guaranteed.",
+      "ogDescription": "Upload your artwork, choose your garment, and we'll print and ship it in 48h."
+    },
+    "catalog": {
+      "title": "Our Products",
+      "subtitle": "Choose a blank, customize it with your design, and we'll print and ship it to you."
+    },
+    "shopByCategory": {
+      "heading": "Shop by Category",
+      "subtitle": "Find the perfect blank for your design.",
+      "viewAll": "View all products"
+    },
+    "modal": {
+      "heading": "Choose your garment",
+      "subtitle": "Pick a style to start customising",
+      "noProducts": "No products available yet."
+    },
+    "footer": {
+      "allRights": "© {{year}} PrintShop. All rights reserved."
+    },
+    "hero": {
+      "badge": "Custom Print · No Minimum Order",
+      "title1": "Design your",
+      "titleHighlight": "vision.",
+      "title2": "We print it.",
+      "subtitle": "Upload your artwork. Choose your garment. Shipped in 48h.",
+      "ctaPrimary": "Start Designing →",
+      "ctaSecondary": "View Catalog",
+      "stat1": "10,000+ orders",
+      "stat2": "48h turnaround",
+      "stat3": "100% satisfaction"
+    }
+  },
+
+  "howItWorks": {
+    "heading": "How it works",
+    "subtitle": "From blank shirt to delivered order in three simple steps.",
+    "cta": "Get started now",
+    "step1": {
+      "title": "Choose your product",
+      "body": "Browse our catalog of premium blank apparel. Pick the style, color, and size that fits your vision."
+    },
+    "step2": {
+      "title": "Upload your design",
+      "body": "Drop in your PNG, SVG, or JPEG artwork. We support files up to 20MB — no design skills required."
+    },
+    "step3": {
+      "title": "We print & ship",
+      "body": "Our team prints your order using Direct-to-Garment, embroidery, or screen print — and ships it fast."
+    }
+  },
+
+  "features": {
+    "freeShipping": {
+      "title": "Free shipping",
+      "body": "On all orders over $50"
+    },
+    "fastTurnaround": {
+      "title": "Fast turnaround",
+      "body": "Printed and shipped in 48h"
+    },
+    "premiumQuality": {
+      "title": "Premium quality",
+      "body": "Industry-leading print durability"
+    },
+    "easyReturns": {
+      "title": "Easy returns",
+      "body": "30-day hassle-free returns"
+    }
+  },
+
+  "catalog": {
+    "meta": {
+      "title": "All Products | PrintShop",
+      "description": "Browse our full range of custom T-shirts, hoodies, and apparel. Upload your design and we'll print and ship it in 48h."
+    },
+    "heading": "Our Products",
+    "subtitle": "Choose a blank, customize it with your design, and we'll print and ship it to you.",
+    "filters": "Filters",
+    "filtersActive_one": "{{count}} filter active",
+    "filtersActive_other": "{{count}} filters active",
+    "clearAll": "Clear all",
+    "clearAllFilters": "Clear all filters",
+    "searchPlaceholder": "Search products…",
+    "price": "Price",
+    "size": "Size",
+    "color": "Color",
+    "sort": {
+      "featured": "Featured",
+      "priceAsc": "Price: Low → High",
+      "priceDesc": "Price: High → Low",
+      "newest": "Newest first"
+    },
+    "results_one": "{{count}} result",
+    "results_other": "{{count}} results",
+    "noMatch": "No products match your filters",
+    "customize": "Customize"
+  },
+
+  "product": {
+    "meta": {
+      "title": "{{name}} | PrintShop"
+    },
+    "reviews_one": "({{count}} review)",
+    "reviews_other": "({{count}} reviews)",
+    "uploadDesign": "Upload your design",
+    "uploadHint": "PNG or SVG · max {{max}} MB",
+    "yourDesign": "Your Design",
+    "addToCart": "Add to cart",
+    "addingToCart": "Adding…",
+    "outOfStock": "Out of Stock",
+    "selectSize": "Please select a size",
+    "addedToCart": "Added to cart!",
+    "onlyPngSvg": "Only PNG or SVG files are accepted.",
+    "fileTooLarge": "Max file size is {{max}} MB.",
+    "related": "You might also like",
+    "backToHome": "← Back to home",
+    "notFound": "Product not found.",
+    "color": "Color",
+    "size": "Size",
+    "quantity": "Quantity",
+    "backside": "Backside",
+    "printMethod": "Print Method",
+    "sizeGuide": "Size guide",
+    "blanckBack": "Blank back",
+    "printOnBack": "Print on back",
+    "delivery": {
+      "standard": "Standard · 5–7 days",
+      "express": "Express · 2–3 days",
+      "pickup": "Pickup · Ready in 48h",
+      "standardSub": "Free over $50",
+      "expressSub": "$9.99",
+      "pickupSub": "Select locations"
+    },
+    "decoration": {
+      "dtg": "DTG Print",
+      "embroidery": "Embroidery",
+      "screen": "Screen Print",
+      "dtgDesc": "Photorealistic full-color prints. Best for detailed artwork.",
+      "embroideryDesc": "Premium stitched look. Ideal for logos & text.",
+      "screenDesc": "Vibrant, durable. Great for simple designs & bulk orders."
+    },
+    "reviews": {
+      "heading": "Customer Reviews",
+      "writeReview": "Write a Review",
+      "thanks": "Thanks for your review!",
+      "yourReview": "Your Review",
+      "rating": "Rating",
+      "name": "Name (optional)",
+      "namePlaceholder": "Your name",
+      "comment": "Comment (optional)",
+      "commentPlaceholder": "What did you think of this product?",
+      "submit": "Submit Review",
+      "submitting": "Submitting…",
+      "selectRating": "Please select a rating.",
+      "cancel": "Cancel",
+      "noReviews": "No reviews yet. Be the first to write one!",
+      "anonymous": "Anonymous"
+    },
+    "miniCart": {
+      "heading": "Your cart",
+      "empty": "Your cart is empty",
+      "subtotal": "Subtotal",
+      "goToCart": "Go to cart →",
+      "goToCartLink": "Go to cart",
+      "items_one": "{{count}} item",
+      "items_other": "{{count}} items"
+    },
+    "customTShirt": "Custom T-Shirt",
+    "uploadedCount": "{{count}}/{{max}} uploaded",
+    "noOptions": "No options available yet",
+    "noOptionsBody": "This product isn't ready for purchase. Please check back soon.",
+    "selectExact": "Select size for exact price",
+    "stockOut": "Out of stock",
+    "stockLow_one": "Only {{count}} left",
+    "stockLow_other": "Only {{count}} left",
+    "stockIn_one": "{{count}} in stock",
+    "stockIn_other": "{{count}} in stock",
+    "loading": "Loading product…",
+    "uploading": "Uploading… {{progress}}%",
+    "saveToWishlist": "Save to wishlist",
+    "removeFromWishlist": "Remove from wishlist",
+    "side": {
+      "front": "front",
+      "back": "back",
+      "set": "✓ set",
+      "none": "none"
+    }
+  },
+
+  "cart": {
+    "meta": {
+      "title": "Your Cart | PrintShop"
+    },
+    "heading": "Your cart",
+    "itemCount_one": "({{count}} item)",
+    "itemCount_other": "({{count}} items)",
+    "empty": {
+      "heading": "Your cart is empty",
+      "body": "Add a custom design to get started.",
+      "cta": "Start designing"
+    },
+    "continueShopping": "← Continue shopping",
+    "remove": "Remove item",
+    "design": "Design:",
+    "each": "each",
+    "couldNotUpdate": "Could not update quantity. Please try again.",
+    "couldNotRemove": "Could not remove item. Please try again.",
+    "myAccount": "My Account",
+    "signIn": "Sign In",
+    "summary": {
+      "heading": "Order summary",
+      "subtotal": "Subtotal",
+      "subtotalCount_one": "Subtotal ({{count}} item)",
+      "subtotalCount_other": "Subtotal ({{count}} items)",
+      "shipping": "Shipping",
+      "shippingCalc": "Calculated at checkout",
+      "total": "Total",
+      "checkout": "Proceed to checkout"
+    }
+  },
+
+  "checkout": {
+    "meta": {
+      "title": "Secure Checkout | PrintShop"
+    },
+    "backToCart": "← Back to cart",
+    "breadcrumb": {
+      "cart": "Cart",
+      "checkout": "Checkout",
+      "confirmation": "Confirmation"
+    },
+    "error": {
+      "heading": "Something went wrong",
+      "backToCart": "← Back to cart"
+    },
+    "unavailable": {
+      "heading": "Checkout unavailable",
+      "body": "Stripe is not configured. Add VITE_STRIPE_PUBLISHABLE_KEY to frontend/.env and STRIPE_SECRET_KEY to backend/.env."
+    },
+    "shipping": {
+      "heading": "Shipping information",
+      "fullName": "Full name",
+      "fullNamePlaceholder": "Jane Doe",
+      "email": "Email",
+      "emailPlaceholder": "jane@example.com",
+      "address": "Address",
+      "addressPlaceholder": "123 Main St",
+      "apartment": "Apartment, suite, etc.",
+      "apartmentPlaceholder": "Apt 4B (optional)",
+      "city": "City",
+      "cityPlaceholder": "New York",
+      "state": "State",
+      "statePlaceholder": "NY",
+      "zip": "ZIP",
+      "zipPlaceholder": "10001"
+    },
+    "payment": {
+      "heading": "Payment",
+      "pay": "Pay {{amount}}",
+      "processing": "Processing…",
+      "securedBy": "Secured by Stripe · Your payment info is never stored on our servers"
+    },
+    "promo": {
+      "placeholder": "Promo code",
+      "apply": "Apply",
+      "applying": "…",
+      "applied": "{{code}} applied",
+      "remove": "Remove",
+      "removing": "…"
+    },
+    "summary": {
+      "heading": "Order summary",
+      "subtotal_one": "Subtotal ({{count}} item)",
+      "subtotal_other": "Subtotal ({{count}} items)",
+      "promo": "Promo ({{code}})",
+      "shipping": "Shipping",
+      "shippingFree": "Free",
+      "total": "Total",
+      "defaultProduct": "Custom T-Shirt",
+      "qty": "qty"
+    }
+  },
+
+  "orderConfirmation": {
+    "meta": {
+      "title": "Order Confirmed | PrintShop"
+    },
+    "success": {
+      "heading": "Order confirmed!",
+      "bodyWithEmail": "A confirmation has been sent to {{email}}.",
+      "bodyNoEmail": "Thank you for your order. We'll start printing right away.",
+      "amountCharged": "Amount charged",
+      "orderAnother": "Order another design",
+      "backToHome": "Back to home"
+    },
+    "processing": {
+      "heading": "Payment processing",
+      "body": "Your payment is being processed. We'll confirm your order shortly.",
+      "backToHome": "Back to home"
+    },
+    "failed": {
+      "heading": "Payment unsuccessful",
+      "body": "Something went wrong with your payment. Please try again or contact support.",
+      "backToHome": "Back to home"
+    },
+    "whatNext": {
+      "heading": "What happens next?",
+      "step1": {
+        "label": "Order received",
+        "body": "Your payment was processed successfully."
+      },
+      "step2": {
+        "label": "Printing in progress",
+        "body": "We print your design using DTG within 1–2 business days."
+      },
+      "step3": {
+        "label": "Shipped",
+        "body": "Estimated delivery: 3–5 business days after printing."
+      }
+    }
+  },
+
+  "login": {
+    "meta": {
+      "title": "Sign In | PrintShop",
+      "description": "Sign in or create a free PrintShop account to track orders and save your wishlist."
+    },
+    "backToProducts": "← Browse products",
+    "welcomeBack": "Welcome back",
+    "createAccount": "Create account",
+    "signInSubtitle": "Sign in to view your orders and saved address.",
+    "signUpSubtitle": "Fill in your details — we'll send a code to verify your email.",
+    "tabs": {
+      "signIn": "Sign in",
+      "signUp": "Sign up"
+    },
+    "fields": {
+      "email": "Email",
+      "password": "Password",
+      "fullName": "Full name *",
+      "phoneNumber": "Phone number",
+      "confirmPassword": "Confirm password *",
+      "passwordMin": "Password *",
+      "passwordPlaceholder": "Min. 6 characters",
+      "addressLine1": "Address line 1",
+      "addressLine2": "Apartment, suite, etc.",
+      "city": "City",
+      "state": "State",
+      "zip": "ZIP",
+      "shippingSection": "Shipping address",
+      "shippingOptional": "(optional — saves time at checkout)"
+    },
+    "buttons": {
+      "signIn": "Sign in",
+      "signingIn": "Signing in…",
+      "sendCode": "Send verification code →",
+      "sendingCode": "Sending code…",
+      "continueGoogle": "Continue with Google"
+    },
+    "validation": {
+      "passwordMismatch": "Passwords do not match.",
+      "passwordTooShort": "Password must be at least 6 characters.",
+      "codeIncomplete": "Please enter the complete 6-digit code."
+    },
+    "verify": {
+      "heading": "Check your email",
+      "body": "We sent a 6-digit code to {{email}}",
+      "label": "Verification code",
+      "expires": "Code expires in 15 minutes",
+      "verify": "Verify & create account",
+      "verifying": "Verifying…",
+      "noCode": "Didn't receive the code?",
+      "resend": "Resend code",
+      "resendIn": "Resend in {{seconds}}s",
+      "changeEmail": "← Change email or details"
+    },
+    "divider": "or",
+    "networkError": "Network error. Please try again.",
+    "couldNotSend": "Could not send code.",
+    "couldNotResend": "Could not resend code.",
+    "verificationFailed": "Verification failed.",
+    "incorrectPassword": "Incorrect password. Try again."
+  },
+
+  "account": {
+    "meta": {
+      "title": "My Account | PrintShop"
+    },
+    "heading": "My Account",
+    "tabs": {
+      "orders": "Orders",
+      "wishlist": "Wishlist",
+      "address": "Saved Address",
+      "profile": "Profile"
+    },
+    "orders": {
+      "empty": {
+        "heading": "No orders yet",
+        "body": "Your completed orders will appear here.",
+        "cta": "Browse products →"
+      },
+      "itemCount_one": "{{count}} item",
+      "itemCount_other": "{{count}} items",
+      "couldNotLoad": "Could not load orders.",
+      "qty": "qty {{n}}"
+    },
+    "status": {
+      "pending": "Pending",
+      "paid": "Paid",
+      "processing": "Processing",
+      "fulfilled": "Fulfilled",
+      "shipped": "Shipped",
+      "cancelled": "Cancelled"
+    },
+    "wishlist": {
+      "empty": {
+        "heading": "No saved items",
+        "body": "Tap the heart icon on any product to save it here.",
+        "cta": "Browse products →"
+      }
+    },
+    "address": {
+      "heading": "Address",
+      "apartment": "Apartment, suite, etc.",
+      "city": "City",
+      "state": "State",
+      "zip": "ZIP",
+      "saveButton": "Save address",
+      "saved": "Address saved!"
+    },
+    "profile": {
+      "fullName": "Full name",
+      "email": "Email",
+      "emailReadonly": "Email cannot be changed here.",
+      "saveButton": "Save profile",
+      "saved": "Profile saved!"
+    },
+    "couldNotSaveAddress": "Could not save address.",
+    "couldNotSaveProfile": "Could not save profile."
+  },
+
+  "category": {
+    "meta": {
+      "title": "{{name}} | PrintShop"
+    },
+    "breadcrumb": {
+      "home": "Home",
+      "products": "All products"
+    }
+  },
+
+  "admin": {
+    "topBar": {
+      "dashboard": "Dashboard",
+      "orders": "Orders",
+      "products": "Products",
+      "categories": "Categories",
+      "logout": "Logout",
+      "adminBadge": "Admin"
+    },
+    "login": {
+      "title": "Admin",
+      "heading": "Dashboard login",
+      "body": "Enter your admin password to continue.",
+      "passwordLabel": "Password",
+      "submit": "Enter dashboard",
+      "checking": "Checking…",
+      "incorrectPassword": "Incorrect password. Try again."
+    },
+    "dashboard": {
+      "heading": "Dashboard",
+      "refresh": "Refresh",
+      "stats": {
+        "totalRevenue": "Total revenue",
+        "totalRevenuesSub": "All paid orders",
+        "thisMonth": "This month",
+        "totalOrders": "Total orders",
+        "pendingOrders_one": "{{count}} pending",
+        "pendingOrders_other": "{{count}} pending",
+        "products": "Products",
+        "productsSub": "In catalog"
+      },
+      "chart": {
+        "heading": "Revenue — last 30 days",
+        "subtitle": "Paid & fulfilled orders only",
+        "noData": "No paid orders in the last 30 days"
+      },
+      "topProducts": {
+        "heading": "Top products",
+        "noData": "No sales data yet.",
+        "unitsSold_one": "{{count}} unit sold",
+        "unitsSold_other": "{{count}} units sold"
+      },
+      "recentOrders": {
+        "heading": "Recent orders",
+        "viewAll": "View all →",
+        "noData": "No orders yet.",
+        "customer": "Customer"
+      }
+    },
+    "orders": {
+      "heading": "Orders",
+      "subtitle": "Manage and fulfill customer orders",
+      "stats": {
+        "totalOrders": "Total orders",
+        "paid": "Paid",
+        "paidSub": "awaiting fulfillment",
+        "fulfilled": "Fulfilled",
+        "revenue": "Revenue",
+        "revenueSub": "paid + fulfilled"
+      },
+      "filters": {
+        "all": "All",
+        "pending": "Pending",
+        "paid": "Paid",
+        "fulfilled": "Fulfilled",
+        "cancelled": "Cancelled"
+      },
+      "table": {
+        "date": "Date",
+        "customer": "Customer",
+        "items": "Items",
+        "total": "Total",
+        "status": "Status",
+        "view": "View →"
+      },
+      "empty": "No orders found",
+      "showing": "Showing {{shown}} of {{total}} orders"
+    },
+    "orderDetail": {
+      "backToOrders": "Orders",
+      "orderNumber": "Order #{{id}}",
+      "updateStatus": "Update status:",
+      "statusOptions": {
+        "pending": "Pending",
+        "paid": "Paid",
+        "fulfilled": "Fulfilled",
+        "cancelled": "Cancelled"
+      },
+      "saveStatus": "Save",
+      "saving": "Saving…",
+      "updated": "Updated",
+      "cards": {
+        "shippingAddress": "Shipping address",
+        "payment": "Payment",
+        "amountPaid": "Amount paid",
+        "stripePI": "Stripe PI",
+        "status": "Status"
+      },
+      "items": {
+        "heading": "Order items ({{count}})",
+        "empty": "No items found",
+        "columns": {
+          "product": "Product",
+          "design": "Design",
+          "qty": "Qty",
+          "unit": "Unit",
+          "total": "Total"
+        },
+        "orderTotal": "Order total"
+      }
+    },
+    "products": {
+      "heading": "Products",
+      "subtitle": "Manage your product catalog",
+      "newProduct": "New product",
+      "empty": {
+        "heading": "No products yet",
+        "cta": "Create your first product →"
+      },
+      "table": {
+        "product": "Product",
+        "variants": "Variants",
+        "images": "Images",
+        "slug": "Slug"
+      },
+      "delete": {
+        "confirm": "Delete?",
+        "yes": "Yes",
+        "cancel": "Cancel"
+      },
+      "actions": {
+        "edit": "Edit",
+        "delete": "Delete"
+      }
+    },
+    "productForm": {
+      "headingNew": "New product",
+      "headingEdit": "Edit product",
+      "sections": {
+        "basicInfo": "Basic info",
+        "variants": "Variants",
+        "variantsSub": "Generate all color × size combinations at once.",
+        "images": "Images",
+        "imagesSub": "Upload a file or paste a URL. Use angle 'front' for the main thumbnail."
+      },
+      "fields": {
+        "productName": "Product name *",
+        "name": "Name",
+        "slug": "Slug (URL)",
+        "description": "Description",
+        "category": "Category",
+        "categoryNone": "— No category —",
+        "price": "Price ($)",
+        "skuPrefix": "SKU prefix (optional)",
+        "colorName": "Color name",
+        "colorHex": "Hex",
+        "addColor": "Add",
+        "colorsToAdd": "Colors to add",
+        "sizes": "Sizes",
+        "generateVariants": "Generate variants",
+        "generateVariantsLabel": "Generate {{count}} variants",
+        "generating": "Generating…",
+        "imageAngle": "Angle",
+        "imageFile": "Image file *",
+        "imageUrl": "Image URL *",
+        "imageColorLabel": "Color",
+        "addImage": "Add image",
+        "uploadFile": "Upload file",
+        "urlMode": "Paste URL",
+        "chooseImage": "Click to choose image…",
+        "allColors": "All colors"
+      },
+      "checklist": {
+        "heading": "To unlock \"Generate variants\":",
+        "addColor": "Add at least one color",
+        "addSize": "Select at least one size",
+        "addPrice": "Enter a price"
+      },
+      "save": "Save product",
+      "saveChanges": "Save changes",
+      "createProduct": "Create product",
+      "saving": "Saving…",
+      "saved": "Saved",
+      "done": "Done",
+      "deleteVariant": "Delete variant",
+      "variantError": "Add at least one color, one size, and a price.",
+      "uploading": "Uploading…",
+      "variantTable": {
+        "color": "Color",
+        "size": "Size",
+        "price": "Price",
+        "sku": "SKU",
+        "stock": "Stock"
+      },
+      "imageTable": {
+        "preview": "Preview",
+        "color": "Color",
+        "angle": "Angle",
+        "url": "URL"
+      }
+    },
+    "categories": {
+      "heading": "Categories",
+      "table": {
+        "name": "Name",
+        "slug": "Slug",
+        "order": "Order",
+        "image": "Image"
+      },
+      "empty": "No categories yet. Add one below.",
+      "add": {
+        "heading": "Add category",
+        "namePlaceholder": "e.g. Hoodies",
+        "slugPlaceholder": "hoodies",
+        "sortOrderLabel": "Sort order",
+        "sortOrderPlaceholder": "0",
+        "submit": "Add category",
+        "submitting": "Adding…",
+        "nameLabel": "Name *",
+        "slugLabel": "Slug",
+        "imageLabel": "Category image"
+      },
+      "edit": {
+        "save": "Save",
+        "saving": "Saving…",
+        "cancel": "Cancel",
+        "namePlaceholder": "Category name",
+        "slugPlaceholder": "category-slug"
+      },
+      "image": {
+        "label": "Image",
+        "optional": "(optional)",
+        "upload": "Upload",
+        "url": "URL",
+        "uploading": "Uploading… {{percent}}%",
+        "clickToReplace": "Image uploaded — click to replace",
+        "clickToUpload": "Click to upload PNG, JPG, WebP"
+      },
+      "delete": {
+        "confirm": "Delete?",
+        "yes": "Yes",
+        "no": "No"
+      },
+      "actions": {
+        "edit": "Edit",
+        "delete": "Delete"
+      }
+    }
+  }
+}

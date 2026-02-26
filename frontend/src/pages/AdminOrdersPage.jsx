@@ -1,7 +1,9 @@
 // src/pages/AdminOrdersPage.jsx
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { fetchAdminOrders } from '../api/admin';
+import { AdminTopBar } from './AdminProductsPage';
 
 // ── Helpers ───────────────────────────────────────────────────
 function formatPrice(cents) {
@@ -42,16 +44,9 @@ function StatTile({ label, value, sub }) {
   );
 }
 
-const FILTER_TABS = [
-  { label: 'All', value: '' },
-  { label: 'Pending', value: 'pending' },
-  { label: 'Paid', value: 'paid' },
-  { label: 'Fulfilled', value: 'fulfilled' },
-  { label: 'Cancelled', value: 'cancelled' },
-];
-
 // ── Page ──────────────────────────────────────────────────────
 export default function AdminOrdersPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeStatus = searchParams.get('status') || '';
@@ -59,6 +54,14 @@ export default function AdminOrdersPage() {
   const [data, setData] = useState(null); // { stats, orders, total }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const filterTabs = [
+    { label: t('admin.orders.filters.all'),       value: '' },
+    { label: t('admin.orders.filters.pending'),   value: 'pending' },
+    { label: t('admin.orders.filters.paid'),      value: 'paid' },
+    { label: t('admin.orders.filters.fulfilled'), value: 'fulfilled' },
+    { label: t('admin.orders.filters.cancelled'), value: 'cancelled' },
+  ];
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -100,60 +103,28 @@ export default function AdminOrdersPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Top bar */}
-      <header className="sticky top-0 z-40 bg-white border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link to="/" className="text-lg font-extrabold text-slate-900 tracking-tight">
-              Print<span className="text-indigo-600">Shop</span>
-            </Link>
-            <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-full uppercase tracking-wide">
-              Admin
-            </span>
-            <nav className="hidden sm:flex items-center gap-1 ml-2">
-              <Link
-                to="/admin/orders"
-                className="px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-              >
-                Orders
-              </Link>
-              <Link
-                to="/admin/products"
-                className="px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-              >
-                Products
-              </Link>
-            </nav>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="text-sm text-slate-500 hover:text-slate-900 font-medium transition-colors"
-          >
-            Logout
-          </button>
-        </div>
-      </header>
+      <AdminTopBar onLogout={handleLogout} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex flex-col gap-6">
         {/* Page title */}
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Orders</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Manage and fulfill customer orders</p>
+          <h1 className="text-2xl font-bold text-slate-900">{t('admin.orders.heading')}</h1>
+          <p className="text-sm text-slate-500 mt-0.5">{t('admin.orders.subtitle')}</p>
         </div>
 
         {/* Stats bar */}
         {stats && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <StatTile label="Total orders" value={stats.total} />
-            <StatTile label="Paid" value={stats.paid} sub="awaiting fulfillment" />
-            <StatTile label="Fulfilled" value={stats.fulfilled} />
-            <StatTile label="Revenue" value={formatPrice(stats.revenue_cents)} sub="paid + fulfilled" />
+            <StatTile label={t('admin.orders.stats.totalOrders')} value={stats.total} />
+            <StatTile label={t('admin.orders.stats.paid')} value={stats.paid} sub={t('admin.orders.stats.paidSub')} />
+            <StatTile label={t('admin.orders.stats.fulfilled')} value={stats.fulfilled} />
+            <StatTile label={t('admin.orders.stats.revenue')} value={formatPrice(stats.revenue_cents)} sub={t('admin.orders.stats.revenueSub')} />
           </div>
         )}
 
         {/* Filter tabs */}
         <div className="flex gap-1 bg-slate-100 rounded-xl p-1 w-fit">
-          {FILTER_TABS.map((tab) => (
+          {filterTabs.map((tab) => (
             <button
               key={tab.value}
               onClick={() => setFilter(tab.value)}
@@ -194,17 +165,17 @@ export default function AdminOrdersPage() {
               <svg className="w-12 h-12 mx-auto mb-3 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
-              <p className="text-sm font-medium text-slate-500">No orders found</p>
+              <p className="text-sm font-medium text-slate-500">{t('admin.orders.empty')}</p>
             </div>
           ) : (
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50 text-left">
-                  <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Date</th>
-                  <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Customer</th>
-                  <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide text-center">Items</th>
-                  <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">Total</th>
-                  <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
+                  <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t('admin.orders.table.date')}</th>
+                  <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t('admin.orders.table.customer')}</th>
+                  <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide text-center">{t('admin.orders.table.items')}</th>
+                  <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">{t('admin.orders.table.total')}</th>
+                  <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t('admin.orders.table.status')}</th>
                   <th className="px-6 py-3" />
                 </tr>
               </thead>
@@ -233,7 +204,7 @@ export default function AdminOrdersPage() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <span className="text-indigo-600 font-semibold text-xs hover:underline">
-                        View →
+                        {t('admin.orders.table.view')}
                       </span>
                     </td>
                   </tr>
@@ -246,7 +217,7 @@ export default function AdminOrdersPage() {
         {/* Pagination hint */}
         {data && data.total > data?.orders?.length && (
           <p className="text-xs text-center text-slate-400">
-            Showing {data.orders.length} of {data.total} orders
+            {t('admin.orders.showing', { shown: data.orders.length, total: data.total })}
           </p>
         )}
       </main>
