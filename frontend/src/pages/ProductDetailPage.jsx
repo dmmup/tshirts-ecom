@@ -17,8 +17,8 @@ import LanguageSwitcher from '../components/LanguageSwitcher';
 // ── Helpers ──────────────────────────────────────────────────
 
 const SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL'];
-const ALLOWED_TYPES = ['image/png', 'image/svg+xml'];
-const MAX_DESIGN_MB = 10;
+const ALLOWED_TYPES = ['image/png', 'image/svg+xml', 'image/jpeg', 'image/jpg'];
+const MAX_DESIGN_MB = 25;
 
 function sortSizes(sizes) {
   return [...sizes].sort((a, b) => SIZE_ORDER.indexOf(a) - SIZE_ORDER.indexOf(b));
@@ -147,7 +147,7 @@ function DesignPicker({ library, side, sideDesigns, onAddFile, onApply, onRemove
         </div>
       )}
 
-      <input ref={inputRef} type="file" className="hidden" accept=".png,.svg" onChange={handleChange} />
+      <input ref={inputRef} type="file" className="hidden" accept=".png,.svg,.jpg,.jpeg" onChange={handleChange} />
 
       {/* Per-side status */}
       <div className="flex gap-2 text-xs">
