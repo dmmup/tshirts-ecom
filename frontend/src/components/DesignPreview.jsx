@@ -305,6 +305,22 @@ export default function DesignPreview({
           </div>
         )}
 
+        {/* ── Print area boundary – faint dashed guide, pointer-events-none ── */}
+        {mockupUrl && imgLoaded && (
+          <div
+            className="absolute pointer-events-none"
+            style={{
+              left:         `${(pa.xPct - pa.wPct / 2) * 100}%`,
+              top:          `${(pa.yPct - pa.hPct / 2) * 100}%`,
+              width:        `${pa.wPct * 100}%`,
+              height:       `${pa.hPct * 100}%`,
+              border:       '1.5px dashed rgba(99,102,241,0.22)',
+              borderRadius: 6,
+              zIndex:       5,
+            }}
+          />
+        )}
+
         {/* ── Design placeholder – single clean box, draggable/resizable/rotatable ── */}
         {!hasDesign && containerW > 0 && mockupUrl && logoPlacement && (() => {
           const logoW = logoPlacement.wPct * containerW;
@@ -356,6 +372,18 @@ export default function DesignPreview({
                   userSelect:  'none',
                 }}>
                   Your design
+                  {onUploadClick && (
+                    <span style={{
+                      display:    'block',
+                      fontWeight: 400,
+                      fontSize:   Math.max(8, logoW * 0.075),
+                      color:      'rgba(99,102,241,0.40)',
+                      marginTop:  2,
+                      letterSpacing: '0.01em',
+                    }}>
+                      Click to upload
+                    </span>
+                  )}
                 </span>
               )}
 
