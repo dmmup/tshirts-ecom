@@ -10,7 +10,12 @@ const nodemailer = require('nodemailer');
 const { createClient } = require('@supabase/supabase-js');
 const router = express.Router();
 
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+if (!process.env.STRIPE_SECRET_KEY) {
+  console.warn('WARNING: STRIPE_SECRET_KEY is not set. Checkout will be unavailable.');
+}
+const stripe = process.env.STRIPE_SECRET_KEY
+  ? require('stripe')(process.env.STRIPE_SECRET_KEY)
+  : null;
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
