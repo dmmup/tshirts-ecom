@@ -64,9 +64,11 @@ function StarRating({ rating, count }) {
 // Library of up to 4 designs; each side (front/back) picks independently.
 const MAX_DESIGNS = 4;
 
-function DesignPicker({ library, side, sideDesigns, onAddFile, onApply, onRemove }) {
+function DesignPicker({ library, side, sideDesigns, onAddFile, onApply, onRemove, triggerRef }) {
   const { t } = useTranslation();
   const inputRef = useRef(null);
+  // Expose a trigger so the parent (or DesignPreview placeholder) can open the picker
+  if (triggerRef) triggerRef.current = () => inputRef.current?.click();
   const [error, setError] = useState('');
 
   const handleChange = (e) => {
@@ -837,6 +839,7 @@ export default function ProductDetailPage() {
 
   // Preview / design
   const [side, setSide] = useState('front');
+  const designPickerTriggerRef = useRef(null); // lets DesignPreview placeholder open the picker
 
   // Library of uploaded designs (max 4) – { id, file, localUrl }
   const [designLibrary, setDesignLibrary] = useState([]);
@@ -1207,6 +1210,7 @@ export default function ProductDetailPage() {
                 localDesignUrl={sideDesigns[side].localDesignUrl}
                 placement={sideDesigns[side].placement}
                 onPlacementChange={handlePlacementChange}
+                onUploadClick={() => designPickerTriggerRef.current?.()}
               />
             </div>
           </div>
@@ -1271,6 +1275,7 @@ export default function ProductDetailPage() {
                     onAddFile={handleAddFile}
                     onApply={handleApplyDesign}
                     onRemove={handleRemoveDesign}
+                    triggerRef={designPickerTriggerRef}
                   />
                 </div>
 

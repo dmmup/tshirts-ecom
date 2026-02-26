@@ -42,6 +42,7 @@ export default function DesignPreview({
   localDesignUrl,
   placement,
   onPlacementChange,
+  onUploadClick,      // () => void — called when placeholder is tapped (no drag)
 }) {
   const containerRef = useRef(null);
   const placementRef = useRef(placement);
@@ -159,20 +160,25 @@ export default function DesignPreview({
     const rect = containerRef.current.getBoundingClientRect();
     const startX = e.clientX, startY = e.clientY;
     const { x: px, y: py } = logoPlacementRef.current;
+    let moved = false;
     function onMove(me) {
-      updateLogo({
-        ...logoPlacementRef.current,
-        x: clamp(px + (me.clientX - startX) / rect.width,  0, 1),
-        y: clamp(py + (me.clientY - startY) / rect.height, 0, 1),
-      });
+      if (!moved && Math.hypot(me.clientX - startX, me.clientY - startY) > 4) moved = true;
+      if (moved) {
+        updateLogo({
+          ...logoPlacementRef.current,
+          x: clamp(px + (me.clientX - startX) / rect.width,  0, 1),
+          y: clamp(py + (me.clientY - startY) / rect.height, 0, 1),
+        });
+      }
     }
     function onUp() {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup',   onUp);
+      if (!moved && onUploadClick) onUploadClick();
     }
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup',   onUp);
-  }, [updateLogo]);
+  }, [updateLogo, onUploadClick]);
 
   // ── Logo placeholder resize ──────────────────────────────────
   const startLogoResize = useCallback((e) => {
@@ -314,7 +320,7 @@ export default function DesignPreview({
                 width:       logoW,
                 height:      logoH,
                 transform:   `translate(-50%, -50%) rotate(${logoPlacement.rotation}deg)`,
-                cursor:      'grab',
+                cursor:      onUploadClick ? 'pointer' : 'grab',
                 touchAction: 'none',
                 zIndex:      10,
                 userSelect:  'none',
