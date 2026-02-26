@@ -261,12 +261,16 @@ router.get('/orders/:id', requireAdmin, async (req, res) => {
           thumbnailUrl = fallback?.[0]?.url || null;
         }
 
-        // Generate signed download URLs for uploaded design files
+        // Generate signed download URLs for uploaded design files.
+        // The { download: filename } option forces Content-Disposition: attachment
+        // so browsers download the file instead of displaying it in a new tab.
         async function signDesignUrl(storagePath) {
           if (!storagePath) return null;
+          // Extract original filename from path: "{ownerId}/{timestamp}_{filename}"
+          const rawName = storagePath.split('/').pop().replace(/^\d+_/, '') || 'design';
           const { data } = await supabaseAdmin.storage
             .from('designs')
-            .createSignedUrl(storagePath, 60 * 60); // 1 hour
+            .createSignedUrl(storagePath, 60 * 60, { download: rawName }); // 1 hour
           return data?.signedUrl || null;
         }
 
