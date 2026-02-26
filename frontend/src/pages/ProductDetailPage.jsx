@@ -854,6 +854,7 @@ export default function ProductDetailPage() {
   const [addingToCart, setAddingToCart]     = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [toast, setToast]                   = useState(null);
+  const [quantity, setQuantity]             = useState(1);
 
   // Mini cart
   const [miniCartOpen, setMiniCartOpen]       = useState(false);
@@ -1098,7 +1099,7 @@ export default function ProductDetailPage() {
         design_preview_url: frontResult?.previewUrl || backResult?.previewUrl || null,
       };
 
-      await addToCart({ variantId: selectedVariant.id, quantity: 1, config, anonymousId: anonId });
+      await addToCart({ variantId: selectedVariant.id, quantity, config, anonymousId: anonId });
       await loadCart();
       setMiniCartOpen(true);
       setToast({ message: t('product.addedToCart'), type: 'success' });
@@ -1192,7 +1193,7 @@ export default function ProductDetailPage() {
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 pb-28 lg:pb-10 space-y-6">
 
         <Breadcrumb productName={product.name} />
 
@@ -1287,6 +1288,35 @@ export default function ProductDetailPage() {
 
                 {/* Delivery */}
                 <DeliveryBlock />
+
+                {/* Quantity selector */}
+                {(() => {
+                  const maxQty = selectedVariant?.stock ?? 99;
+                  const totalPrice = selectedVariant ? selectedVariant.price_cents * quantity : null;
+                  return (
+                    <div className="flex items-center justify-between gap-4 bg-white rounded-2xl px-4 py-3 shadow-sm">
+                      <span className="text-sm font-semibold text-slate-700">{t('product.quantity')}</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                          disabled={quantity <= 1}
+                          className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-lg font-medium"
+                        >−</button>
+                        <span className="w-8 text-center font-semibold text-slate-900 text-sm">{quantity}</span>
+                        <button
+                          onClick={() => setQuantity(q => Math.min(q + 1, Math.max(1, maxQty)))}
+                          disabled={quantity >= maxQty}
+                          className="w-8 h-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-lg font-medium"
+                        >+</button>
+                      </div>
+                      {totalPrice && quantity > 1 && (
+                        <span className="text-sm font-bold text-indigo-600 ml-auto">
+                          {t('product.total')}: {formatPrice(totalPrice)}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* CTA */}
                 <button
@@ -1393,12 +1423,58 @@ export default function ProductDetailPage() {
         onQtyChange={handleMiniCartQtyChange}
       />
 
+      {/* ── Sticky mobile CTA bar ────────────────────────────────
+           Only rendered on small screens (hidden on lg+).
+           Shows price, quantity +/-, and the Add to Cart button.  */}
+      {selectedVariant && variants.length > 0 && (
+        <div className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-slate-200 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] safe-area-bottom">
+          <div className="px-4 py-3 flex items-center gap-3">
+            {/* Price */}
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-slate-400 leading-none mb-0.5">{formatPrice(selectedVariant.price_cents)}</p>
+              {quantity > 1 && (
+                <p className="text-sm font-bold text-indigo-600 leading-none">
+                  {t('product.total')}: {formatPrice(selectedVariant.price_cents * quantity)}
+                </p>
+              )}
+            </div>
+            {/* Qty */}
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <button
+                onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                disabled={quantity <= 1}
+                className="w-7 h-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 disabled:opacity-30 text-base font-medium"
+              >−</button>
+              <span className="w-6 text-center text-sm font-semibold text-slate-900">{quantity}</span>
+              <button
+                onClick={() => setQuantity(q => Math.min(q + 1, Math.max(1, selectedVariant.stock ?? 99)))}
+                disabled={quantity >= (selectedVariant.stock ?? 99)}
+                className="w-7 h-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 disabled:opacity-30 text-base font-medium"
+              >+</button>
+            </div>
+            {/* CTA */}
+            <button
+              onClick={handleAddToCart}
+              disabled={addingToCart || isOOS}
+              className={`flex-shrink-0 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all active:scale-[0.97] ${
+                isOOS
+                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                  : 'bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white shadow-md shadow-indigo-100'
+              }`}
+            >
+              {isOOS ? t('product.outOfStock') : addingToCart ? '…' : t('product.addToCart')}
+            </button>
+          </div>
+        </div>
+      )}
+
       <style>{`
         @keyframes slide-up {
           from { opacity: 0; transform: translateY(1rem); }
           to   { opacity: 1; transform: translateY(0); }
         }
         .animate-slide-up { animation: slide-up 0.25s ease; }
+        .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
       `}</style>
     </div>
   );

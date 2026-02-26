@@ -169,6 +169,7 @@
     "color": "Color",
     "size": "Talla",
     "quantity": "Cantidad",
+    "total": "Total",
     "backside": "Parte trasera",
     "printMethod": "Método de impresión",
     "sizeGuide": "Guía de tallas",

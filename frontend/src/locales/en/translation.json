@@ -169,6 +169,7 @@
     "color": "Color",
     "size": "Size",
     "quantity": "Quantity",
+    "total": "Total",
     "backside": "Backside",
     "printMethod": "Print Method",
     "sizeGuide": "Size guide",
