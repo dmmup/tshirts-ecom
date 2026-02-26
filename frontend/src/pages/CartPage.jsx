@@ -7,6 +7,77 @@ import { fetchCart, updateCartItem, removeCartItem } from '../api/products';
 import { useAuth } from '../context/AuthContext';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 
+// ── Guest / Account choice modal ─────────────────────────────
+function CheckoutGatewayModal({ onClose, onGuest, onAccount }) {
+  const { t } = useTranslation();
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 flex flex-col gap-5">
+        {/* Close */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"
+          aria-label="Close"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+
+        <h2 className="text-xl font-extrabold text-slate-900">{t('cart.gateway.heading')}</h2>
+
+        {/* Sign in / Create account option */}
+        <button
+          onClick={onAccount}
+          className="group flex items-start gap-4 w-full p-4 rounded-xl border-2 border-indigo-200 bg-indigo-50 hover:border-indigo-400 hover:bg-indigo-100 transition-colors text-left"
+        >
+          <div className="flex-shrink-0 w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center mt-0.5">
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-slate-900 text-sm">{t('cart.gateway.accountTitle')}</p>
+            <p className="text-xs text-slate-500 mt-0.5">{t('cart.gateway.accountSubtitle')}</p>
+          </div>
+          <svg className="w-4 h-4 text-indigo-400 flex-shrink-0 mt-3 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+
+        {/* Divider */}
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px bg-slate-200" />
+          <span className="text-xs text-slate-400 font-medium uppercase tracking-wider">{t('cart.gateway.or')}</span>
+          <div className="flex-1 h-px bg-slate-200" />
+        </div>
+
+        {/* Guest option */}
+        <button
+          onClick={onGuest}
+          className="group flex items-start gap-4 w-full p-4 rounded-xl border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-colors text-left"
+        >
+          <div className="flex-shrink-0 w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center mt-0.5">
+            <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 9l3 3m0 0l-3 3m3-3H8m13 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-slate-700 text-sm">{t('cart.gateway.guestTitle')}</p>
+            <p className="text-xs text-slate-500 mt-0.5">{t('cart.gateway.guestSubtitle')}</p>
+          </div>
+          <svg className="w-4 h-4 text-slate-300 flex-shrink-0 mt-3 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Helpers ───────────────────────────────────────────────────
 function getAnonymousId() {
   return localStorage.getItem('pdp_anon_id');
@@ -261,6 +332,7 @@ export default function CartPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
+  const [gatewayOpen, setGatewayOpen] = useState(false);
 
   const showToast = useCallback((msg) => setToast(msg), []);
   const dismissToast = useCallback(() => setToast(null), []);
@@ -298,10 +370,10 @@ export default function CartPage() {
     }
   }, [items, showToast]);
 
-  // Navigate to checkout
+  // Navigate to checkout (show gateway modal for guests)
   const handleCheckout = useCallback(() => {
-    navigate('/checkout');
-  }, [navigate]);
+    if (user) { navigate('/checkout'); } else { setGatewayOpen(true); }
+  }, [navigate, user]);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -380,6 +452,14 @@ export default function CartPage() {
       </main>
 
       {toast && <Toast message={toast} onDismiss={dismissToast} />}
+
+      {gatewayOpen && (
+        <CheckoutGatewayModal
+          onClose={() => setGatewayOpen(false)}
+          onGuest={() => { setGatewayOpen(false); navigate('/checkout'); }}
+          onAccount={() => { setGatewayOpen(false); navigate('/login?redirect=/checkout'); }}
+        />
+      )}
     </div>
   );
 }

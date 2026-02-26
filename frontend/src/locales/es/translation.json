@@ -250,6 +250,14 @@
       "body": "Añade un diseño personalizado para comenzar.",
       "cta": "Empieza a diseñar"
     },
+    "gateway": {
+      "heading": "¿Cómo quieres pagar?",
+      "accountTitle": "Inicia sesión o crea una cuenta",
+      "accountSubtitle": "Sigue tus pedidos, guarda direcciones y paga más rápido la próxima vez.",
+      "or": "o",
+      "guestTitle": "Continuar como invitado",
+      "guestSubtitle": "Pago rápido — no necesitas cuenta."
+    },
     "continueShopping": "← Seguir comprando",
     "remove": "Eliminar artículo",
     "design": "Diseño:",

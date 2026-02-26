@@ -250,6 +250,14 @@
       "body": "Add a custom design to get started.",
       "cta": "Start designing"
     },
+    "gateway": {
+      "heading": "How would you like to check out?",
+      "accountTitle": "Sign in or create an account",
+      "accountSubtitle": "Track orders, save addresses and check out faster next time.",
+      "or": "or",
+      "guestTitle": "Continue as guest",
+      "guestSubtitle": "Quick checkout — no account needed."
+    },
     "continueShopping": "← Continue shopping",
     "remove": "Remove item",
     "design": "Design:",
